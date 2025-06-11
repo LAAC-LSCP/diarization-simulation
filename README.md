@@ -9,7 +9,7 @@ In Child Development research, these segments are aggregated into vocalization c
 
 However, algorithms make errors (e.g. by confusing speakers for one another) which introduce biases in downstream analyses.
 Simulating diarization algorithms can help assess the sensitivity of a statistical analysis to classification errors.
-For instance, simulations can help determine whether correlations between speakers' speech quantities are entirely consistent with classification errors.
+For instance, simulations can help determine whether correlations between speakers' speech quantities are entirely consistent with spurious correlations due to classification errors.
 
 ## Overview
 
