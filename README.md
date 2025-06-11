@@ -1,11 +1,11 @@
 # Diarization Simulation
 
 A Python package for simulating speaker diarization with LENA and VTC from ground truth vocalization data.
+Simulating diarization algorithms can help assess the sensitivity of a statistical analysis building upon their automated annotations to classification errors. 
 
 ## Overview
 
-Diarization Simulation is a tool designed to simulate how speaker diarization algorithms might detect vocalizations across different speakers. It takes ground truth data about speaker vocalizations and simulates detection results based on statistical models with hyperparameters derived from real-world algorithm performance.
-It is trained on more than 30 hours of audio annotated by both humans and LENA/VTC.
+Diarization Simulation is a tool designed to simulate how speaker diarization algorithms might detect vocalizations across different speakers. It takes ground truth data about speaker vocalizations and simulates detection results based on statistical models with hyperparameters derived from real algorithms (LENA/VTC).
 
 ## Installation
 
@@ -90,23 +90,7 @@ The simulation uses a hierarchical model where:
 
 ### Requirements
 
-- Python 3.9+
-- pandas
-- numpy
-- scipy
-- tqdm
-- importlib-resources
-
-### Adding New Algorithms
-
-To add a new algorithm:
-
-1. Create a new NPZ file with the algorithm's hyperparameters in the `diarization_simulation/data/` directory
-2. Update the `--algo` choices in `simulate.py` to include your new algorithm
-
-## License
-
-[MIT License](LICENSE)
+You will need Python 3.9+ to run this package.
 
 ## Citation
 
