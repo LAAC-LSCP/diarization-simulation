@@ -94,7 +94,11 @@ def main():
 
     if args.average_hyperpriors == False and args.unique_hyperpriors == False:
         print(
-            "\033[0;31mWARNING\033[0m: Each sample will have its own hyperpriors (mu, alpha, tau). This will inflate the dispersion. Consider using --average-hyperpriors or --unique-hyperpriors instead.")
+            "\034[0;31mWARNING\033[0m: Each sample will have its own hyperpriors (mu, alpha, tau). This is fine but results in larger dispersion, capturing our uncertainty about the algorithm behavior. Consider using --average-hyperpriors or --unique-hyperpriors if this is not what you want.")
+
+    if args.unique_hyperpriors:
+        print(
+            "\031[0;31mWARNING\033[0m: Using --unique-hyperpriors will draw the same hyperpriors once for all simulated samples. If you do this, you want want to generate multiple datasets to make sure your results are consistent with different hyperpriors.")
 
     speakers = ["CHI", "OCH", "FEM", "MAL"]
 
@@ -141,9 +145,10 @@ def main():
     distribution_type = 0 if args.distribution == "poisson" else 1
 
     for n, s in tqdm(enumerate(drawn)):
-        current_mu = mu if args.average_hyperpriors else mu_[s]
-        current_alpha = alpha if args.average_hyperpriors else alpha_[s]
-        current_tau = tau if args.average_hyperpriors else tau_[s]
+        draw = drawn[0] if args.unique_hyperpriors else drawn[s]
+        current_mu = mu if args.average_hyperpriors else mu_[draw]
+        current_alpha = alpha if args.average_hyperpriors else alpha_[draw]
+        current_tau = tau if args.average_hyperpriors else tau_[draw]
 
         # Call the numba function
         sample_detections = simulate_sample(
