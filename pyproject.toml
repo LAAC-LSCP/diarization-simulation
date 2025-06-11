@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diarization-simulation"
+version = "0.1.0"
+description = "Speech detection simulation package"
+dependencies = [
+    "pandas",
+    "numpy",
+    "scipy",
+    "tqdm",
+    "importlib-resources"
+]
+
+[project.scripts]
+diarization-simulate = "diarization_simulation.simulate:main"
+
+[tool.setuptools.package-data]
+diarization_simulation = ["data/*.npz"]
