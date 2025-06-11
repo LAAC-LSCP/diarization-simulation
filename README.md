@@ -2,14 +2,18 @@
 
 A Python package for simulating speaker diarization with LENA and VTC from ground truth vocalization data.
 
-Diarization algorithms segment and classify speech into predefined speaker categories (including child (CHI) other child (OCH), female adult (FEM), male adult (MAL)).
-In Child Development research, these segments are aggregated into vocalization counts (see below) measuring children's speech output and their speech input in naturalistic daylong recordings.
+Diarization algorithms segment and classify speech into predefined speaker categories (including child (CHI) other
+child (OCH), female adult (FEM), male adult (MAL)).
+In Child Development research, these segments are aggregated into vocalization counts (see below) measuring children's
+speech output and their speech input in naturalistic daylong recordings.
 
 ![](docs/vocalization_counts.png)
 
-However, algorithms make errors (e.g. by confusing speakers for one another) which introduce biases in downstream analyses.
+However, algorithms make errors (e.g. by confusing speakers for one another) which propagate into the measured
+vocalization counts, leading to biases in downstream analyses.
 Simulating diarization algorithms can help assess the sensitivity of a statistical analysis to classification errors.
-For instance, simulations can help determine whether correlations between speakers' speech quantities are entirely consistent with spurious correlations due to classification errors.
+For instance, simulations can help determine whether correlations between speakers' speech quantities are entirely
+consistent with spurious correlations due to classification errors.
 
 ## Overview
 
