@@ -94,11 +94,11 @@ def main():
 
     if args.average_hyperpriors == False and args.unique_hyperpriors == False:
         print(
-            "\034[0;31mWARNING\033[0m: Each sample will have its own hyperpriors (mu, alpha, tau). This is fine but results in larger dispersion, capturing our uncertainty about the algorithm behavior. Consider using --average-hyperpriors or --unique-hyperpriors if this is not what you want.")
+            "\033[94mWARNING\033[0m: Each sample will have its own hyperpriors (mu, alpha, tau). This is fine but results in larger dispersion, capturing our uncertainty about the algorithm behavior. Consider using --average-hyperpriors or --unique-hyperpriors if this is not what you want.")
 
     if args.unique_hyperpriors:
         print(
-            "\031[0;31mWARNING\033[0m: Using --unique-hyperpriors will draw the same hyperpriors once for all simulated samples. If you do this, you want want to generate multiple datasets to make sure your results are consistent with different hyperpriors.")
+            "\033[93mWARNING\033[0m: Using --unique-hyperpriors will draw the same hyperpriors once for all simulated samples. If you do this, you want want to generate multiple datasets to make sure your results are consistent with different hyperpriors.")
 
     speakers = ["CHI", "OCH", "FEM", "MAL"]
 
