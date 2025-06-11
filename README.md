@@ -11,7 +11,7 @@ Diarization Simulation is a tool designed to simulate how speaker diarization al
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/diarization-simulation.git
+git clone https://github.com/LAAC-LSCP/diarization-simulation.git
 cd diarization-simulation
 
 # Install the package
@@ -39,6 +39,7 @@ diarization-simulate --truth path/to/truth.csv \
 | `--samples` | Number of simulation samples per observation | 1000 |
 | `--average-hyperpriors` | Use mean values of hyperpriors (mu and alpha) | True |
 | `--unique-hyperpriors` | Use fixed hyperpriors throughout all samples | True |
+| `--distribution` | Distribution for vocalization counts (`poisson` or `normal`) | `poisson` |
 
 ### Input Format
 
@@ -82,9 +83,16 @@ The simulation works by:
 
 The simulation uses a hierarchical model where:
 - `lambda_ij` ~ Gamma(alpha_ij, mu_ij/alpha_ij) represents detection rates
-- Detected vocalizations ~ Poisson(lambda_ij * true_ij) where:
+- Detected vocalizations are generated using one of two distribution options:
+  - Poisson distribution: Detected ~ Poisson(lambda_ij * true_ij)
+  - Normal distribution: Detected ~ Normal(lambda_ij * true_ij, sqrt(lambda_ij * true_ij / tau))
+
+Where:
   - lambda_ij is the detection rate from speaker i to detected speaker j
   - true_ij is the true vocalization count for speaker i
+  - tau is a precision parameter in the normal distribution option
+
+The Poisson scheme slightly inflates the actual variance, while the normal scheme attempts to capture the correct variance but may be a poor approximation for small counts.
 
 ## Development
 
