@@ -90,7 +90,7 @@ The simulation uses a hierarchical model where:
 Where:
   - lambda_ij is the detection rate from speaker i to detected speaker j
   - true_ij is the true vocalization count for speaker i
-  - tau is a precision parameter in the normal distribution option
+  - tau is a precision parameter used in the normal distribution option
 
 The Poisson scheme slightly inflates the actual variance, while the normal scheme attempts to capture the correct variance but may be a poor approximation for small counts.
 
