@@ -92,6 +92,10 @@ def main():
 
     args = parser.parse_args()
 
+    if args.average_hyperpriors == False and args.unique_hyperpriors == False:
+        print(
+            "\033[0;31mWARNING\033[0m: Each sample will have its own hyperpriors (mu, alpha, tau). This will inflate the dispersion. Consider using --average-hyperpriors or --unique-hyperpriors instead.")
+
     speakers = ["CHI", "OCH", "FEM", "MAL"]
 
     samples_location = f"output/{args.algo}.npz"
