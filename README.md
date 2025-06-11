@@ -1,6 +1,7 @@
 # Diarization Simulation
 
-A Python package for simulating speaker diarization with LENA and VTC from ground truth vocalization data.
+A Python package for simulating speaker diarization with LENA
+and [VTC](https://github.com/MarvinLvn/voice-type-classifier) from ground truth vocalization data.
 
 Diarization algorithms segment and classify speech into predefined speaker categories (including child (CHI) other
 child (OCH), female adult (FEM), male adult (MAL)).
@@ -17,9 +18,12 @@ consistent with spurious correlations due to classification errors.
 
 ## Overview
 
-Diarization Simulation is a tool designed to simulate how speaker diarization algorithms might detect vocalizations
-across different speakers. It takes ground truth data about speaker vocalizations and simulates detection results based
-on statistical models with hyperparameters derived from real algorithms (LENA/VTC).
+Diarization Simulation is a tool designed to simulate the distortion of vocalization counts from different speakers by
+diarization
+algorithms. It takes synthetic ground truth data as its input (the true speaker vocalization counts) and simulates
+measured vocalization counts
+based on the detection and confusion rates of LENA and VTC. The confusion rates of these algorithms were measured on
+calibration data consisting of 30 hours of manual annotations.
 
 ## Installation
 
