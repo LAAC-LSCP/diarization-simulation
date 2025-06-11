@@ -40,7 +40,12 @@ def main():
         default=True,
     )
     parser.add_argument(
-        "--algo", choices=["vtc", "lena"], required=True, help="algorithm to simulate"
+        "--algo", choices=["vtc", "lena"], required=True, help="Algorithm to simulate"
+    )
+    parser.add_argument(
+        "--distribution",
+        choices=["poisson", "normal"],
+        help="Distribution for vocalization counts. We propose to approximation schemes for the underlying distribution: a Poisson scheme (which inflates the actual variance a bit), a normal scheme (which tries to capture the correct variance, but is a poor approximation for small numbers.)",
     )
 
     args = parser.parse_args()
@@ -92,7 +97,7 @@ def main():
 
             mu = samples["mus"][s]
             eta = samples["alphas"][s]
-            p = samples["tau"][s]
+            tau = samples["tau"][s]
 
         # Simulate detections for each recording
         for k in range(n_recs):
@@ -102,7 +107,12 @@ def main():
                     # Beta-binomial simulation
                     lambda_ = np.random.gamma(alpha[i, j], mu[i, j] / alpha[i, j])
                     mean = lambda_ * true_vocs[k, i]
-                    detected_vocs[n, k, j] += np.random.poisson(mean)
+
+                    if args.distribution == "poisson":
+                        detected_vocs[n, k, j] += np.random.poisson(mean)
+                    else:
+                        sd = np.sqrt(mean / tau)
+                        detected_vocs[n, k, j] += int(np.random.normal(mean, sd) + 0.5)
 
                 detected[speaker].append(detected_vocs[n, k, j])
 
