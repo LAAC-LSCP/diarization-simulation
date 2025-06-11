@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Speech detection simulation package"
 dependencies = [
     "pandas",
+    "numba",
     "numpy",
     "scipy",
     "tqdm",

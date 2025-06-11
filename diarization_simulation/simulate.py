@@ -15,6 +15,50 @@ except ImportError:
     from importlib_resources import files
 import os
 
+import numpy as np
+from numba import jit
+
+
+@jit(nopython=True)
+def simulate_sample(true_vocs, alpha, mu, tau, n_recs, n_speakers, distribution_type):
+    """
+    Numba-optimized function to simulate detections for a single sample.
+
+    Args:
+        true_vocs: (n_recs, n_speakers) array of true vocalization counts
+        alpha: (n_speakers, n_speakers) array of alpha parameters
+        mu: (n_speakers, n_speakers) array of mu parameters
+        tau: scalar tau parameter
+        n_recs: number of recordings
+        n_speakers: number of speakers
+        distribution_type: 0 for Poisson, 1 for Gamma
+
+    Returns:
+        detected_vocs: (n_recs, n_speakers) array of detected counts
+    """
+    detected_vocs = np.zeros((n_recs, n_speakers), dtype=np.int32)
+
+    # Simulate detections for each recording
+    for k in range(n_recs):
+        for j in range(n_speakers):  # target speaker
+            detected_vocs[k, j] = 0
+            for i in range(n_speakers):  # source speaker
+                # Beta-binomial simulation
+                lambda_ = np.random.gamma(alpha[i, j], mu[i, j] / alpha[i, j])
+                mean = lambda_ * true_vocs[k, i]
+
+                if true_vocs[k, i] > 0 and mean > 0:
+                    if distribution_type == 0:  # poisson
+                        detected_vocs[k, j] += np.random.poisson(mean)
+                    else:  # gamma
+                        sd = np.sqrt(mean / tau)
+                        shape = (mean / sd) ** 2
+                        detected_vocs[k, j] += int(
+                            np.random.gamma(shape, mean / shape) + 0.5
+                        )
+
+    return detected_vocs
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -30,22 +74,20 @@ def main():
     parser.add_argument(
         "--average-hyperpriors",
         action="store_true",
-        default=True,
         help="Use the mean value of the hyperpriors (mu and alpha)",
     )
     parser.add_argument(
         "--unique-hyperpriors",
         action="store_true",
         help="Use fixed hyperpriors (mu and alpha) throughout all samples",
-        default=True,
     )
     parser.add_argument(
         "--algo", choices=["vtc", "lena"], required=True, help="Algorithm to simulate"
     )
     parser.add_argument(
         "--distribution",
-        choices=["poisson", "normal"],
-        help="Distribution for vocalization counts. We propose to approximation schemes for the underlying distribution: a Poisson scheme (which inflates the actual variance a bit), a normal scheme (which tries to capture the correct variance, but is a poor approximation for small numbers.)",
+        choices=["poisson", "gamma"],
+        help="Distribution for vocalization counts. We propose two approximation schemes for the underlying distribution: a Poisson scheme (which inflates the actual variance a bit), and a gamma scheme (which tries to capture the correct variance, but is a poor approximation for small numbers.)",
     )
 
     args = parser.parse_args()
@@ -76,45 +118,44 @@ def main():
     observation = recs["observation"].values
 
     # Initialize detection arrays
-    detected_vocs = np.zeros((args.samples, n_recs, len(speakers)))
     detected = {speaker: [] for speaker in speakers}
     detected["observation"] = []
     detected["sample"] = []
 
     # Extract hyperparameters
     n_available_samples = samples["mus"].shape[0]
-    mu = samples["mus"].mean(axis=0)
-    alpha = samples["alphas"].mean(axis=0)
-    tau = samples["tau"].mean(axis=0)
 
-    # Sample simulation
+    mu_ = samples["mus"]
+    alpha_ = samples["alphas"]
+    tau_ = samples["tau"]
+
+    mu = mu_.mean(axis=0)
+    alpha = alpha_.mean(axis=0)
+    tau = tau_.mean(axis=0)
+
     drawn = np.random.choice(np.arange(n_available_samples), args.samples)
+    distribution_type = 0 if args.distribution == "poisson" else 1
+
     for n, s in tqdm(enumerate(drawn)):
-        # Update hyperparameters if not averaging
-        if not args.average_hyperpriors:
-            if args.unique_hyperpriors:
-                s = drawn[0]
+        current_mu = mu if args.average_hyperpriors else mu_[s]
+        current_alpha = alpha if args.average_hyperpriors else alpha_[s]
+        current_tau = tau if args.average_hyperpriors else tau_[s]
 
-            mu = samples["mus"][s]
-            eta = samples["alphas"][s]
-            tau = samples["tau"][s]
+        # Call the numba function
+        sample_detections = simulate_sample(
+            true_vocs,
+            current_alpha,
+            current_mu,
+            current_tau,
+            n_recs,
+            len(speakers),
+            distribution_type
+        )
 
-        # Simulate detections for each recording
+        # Store results
         for k in range(n_recs):
             for j, speaker in enumerate(speakers):
-                detected_vocs[n, k, j] = 0
-                for i, true_speaker in enumerate(speakers):
-                    # Beta-binomial simulation
-                    lambda_ = np.random.gamma(alpha[i, j], mu[i, j] / alpha[i, j])
-                    mean = lambda_ * true_vocs[k, i]
-
-                    if args.distribution == "poisson":
-                        detected_vocs[n, k, j] += np.random.poisson(mean)
-                    else:
-                        sd = np.sqrt(mean / tau)
-                        detected_vocs[n, k, j] += int(np.random.normal(mean, sd) + 0.5)
-
-                detected[speaker].append(detected_vocs[n, k, j])
+                detected[speaker].append(sample_detections[k, j])
 
             detected["observation"].append(observation[k])
             detected["sample"].append(n)

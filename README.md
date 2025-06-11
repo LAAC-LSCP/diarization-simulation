@@ -5,7 +5,8 @@ and [VTC](https://github.com/MarvinLvn/voice-type-classifier) from ground truth 
 
 Diarization algorithms segment and classify speech into predefined speaker categories (including child (CHI) other
 child (OCH), female adult (FEM), male adult (MAL)).
-In Child Development research, these segments are aggregated into vocalization counts (see below) measuring children's
+In Child Development and Language Acquisition research, these segments are aggregated into vocalization counts (see
+below) measuring children's
 speech output and their speech input in naturalistic daylong recordings.
 
 ![](docs/vocalization_counts.png)
@@ -92,12 +93,11 @@ The output CSV will contain the following columns:
 
 The simulation works by:
 
-1. Loading ground truth data about speaker vocalizations
-2. Loading pre-computed hyperparameters for the specified algorithm (VTC or LENA)
-3. For each sample and observation:
-    - Computing speaker detection counts using a statistical model based on the algorithm's hyperparameters
-    - The model uses gamma and Poisson distributions to simulate detection probabilities
-4. Saving the simulated detection results to a CSV file
+1. Loading synthetic ground truth data (the "true" vocalization counts per speaker and per observation/recording)
+2. Loading pre-computed hyperparameters characterizing the behavior of the chosen algorithm (VTC or LENA)
+3. For each sample and observation, generating "measured" vocalization counts using a statistical model representing the
+   algorithm's behavior.
+4. Saving the simulated detection results to a CSV file.
 
 ## Statistical Model
 
