@@ -60,6 +60,39 @@ def simulate_sample(true_vocs, alpha, mu, tau, n_recs, n_speakers, distribution_
     return detected_vocs
 
 
+def save_output(detected_df, output_path, output_format):
+    """
+    Save the output in the specified format.
+
+    Args:
+        detected_df: pandas DataFrame with the results
+        output_path: base path for output file
+        output_format: format to save ('csv', 'parquet', 'npz')
+    """
+    base_path = os.path.splitext(output_path)[0]
+
+    if output_format == 'csv':
+        output_file = f"{base_path}.csv"
+        detected_df.to_csv(output_file, index=False)
+        print(f"Results saved to: {output_file}")
+
+    elif output_format == 'parquet':
+        output_file = f"{base_path}.parquet"
+        detected_df.to_parquet(output_file, index=False)
+        print(f"Results saved to: {output_file}")
+
+    elif output_format == 'npz':
+        output_file = f"{base_path}.npz"
+
+        # Convert DataFrame to numpy arrays for npz format
+        data_dict = {}
+        for col in detected_df.columns:
+            data_dict[col] = detected_df[col].values
+
+        np.savez_compressed(output_file, **data_dict)
+        print(f"Results saved to: {output_file}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -68,6 +101,12 @@ def main():
         help="Path to the synthetic truth dataset (in csv format)",
     )
     parser.add_argument("--output", required=True, help="Location of the output CSV")
+    parser.add_argument(
+        "--output-format",
+        choices=["csv", "parquet", "npz"],
+        default="csv",
+        help="Output file format (default: csv)"
+    )
     parser.add_argument(
         "--samples", type=int, default=1000, help="Number of samples per observation"
     )
@@ -87,7 +126,7 @@ def main():
     parser.add_argument(
         "--distribution",
         choices=["poisson", "gamma"],
-        help="Distribution for vocalization counts. We propose two approximation schemes for the underlying distribution: a Poisson scheme (which inflates the actual variance a bit), and a gamma scheme (which tries to capture the correct variance, but is a poor approximation for small numbers.)",
+        help="Distribution for vocalization counts. We propose two approximation schemes for the underlying distribution: a Poisson scheme (which inflates the variance a bit), and a gamma scheme (which tries to capture the correct variance, but is a poor approximation for small numbers.)",
     )
 
     args = parser.parse_args()
@@ -169,10 +208,10 @@ def main():
             detected["observation"].append(observation[k])
             detected["sample"].append(n)
 
-    # Save results
-    detected = pd.DataFrame(detected)
-    detected.sort_values(["sample", "observation"], inplace=True)
-    detected.to_csv(args.output)
+    # Create DataFrame and save results
+    detected_df = pd.DataFrame(detected)
+    detected_df.sort_values(["sample", "observation"], inplace=True)
+    save_output(detected_df, args.output, args.output_format)
 
 
 if __name__ == "__main__":

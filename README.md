@@ -52,13 +52,14 @@ diarization-simulate --truth path/to/truth.csv \
 
 | Argument                | Description                                                 | Default   |
 |-------------------------|-------------------------------------------------------------|-----------|
-| `--truth`               | Path to the ground truth dataset (CSV format)               | Required  |
-| `--output`              | Path where the output CSV will be saved                     | Required  |
+| `--truth`               | Path to the synthetic truth dataset (in csv format)         | Required  |
+| `--output`              | Location of the output file                                 | Required  |
+| `--output-format`       | Output file format (`csv`, `parquet`, or `npz`)             | `csv`     |
 | `--algo`                | Algorithm to simulate (`vtc` or `lena`)                     | Required  |
-| `--samples`             | Number of simulation samples per observation                | 1000      |
-| `--average-hyperpriors` | Use mean values of hyperpriors (mu and alpha)               | True      |
-| `--unique-hyperpriors`  | Use fixed hyperpriors throughout all samples                | True      |
-| `--distribution`        | Distribution for vocalization counts (`poisson` or `gamma`) | `poisson` |
+| `--samples`             | Number of samples per observation                           | 1000      |
+| `--average-hyperpriors` | Use the mean value of the hyperpriors (mu and alpha)        | False     |
+| `--unique-hyperpriors`  | Use fixed hyperpriors (mu and alpha) throughout all samples | False     |
+| `--distribution`        | Distribution for vocalization counts (`poisson` or `gamma`) | None      |
 
 ### Input Format
 
