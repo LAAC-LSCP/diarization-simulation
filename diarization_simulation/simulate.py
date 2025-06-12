@@ -1,11 +1,11 @@
-#!/usr/bin/env python
-
 import pandas as pd
 import numpy as np
 from scipy.special import gammaln
 import random
 from tqdm import tqdm
 import argparse
+from typing import Optional, Union, Dict, List, Tuple
+from pathlib import Path
 
 try:
     # Python 3.9+
@@ -43,7 +43,6 @@ def simulate_sample(true_vocs, alpha, mu, tau, n_recs, n_speakers, distribution_
         for j in range(n_speakers):  # target speaker
             detected_vocs[k, j] = 0
             for i in range(n_speakers):  # source speaker
-                # Beta-binomial simulation
                 lambda_ = np.random.gamma(alpha[i, j], mu[i, j] / alpha[i, j])
                 mean = lambda_ * true_vocs[k, i]
 
@@ -60,47 +59,264 @@ def simulate_sample(true_vocs, alpha, mu, tau, n_recs, n_speakers, distribution_
     return detected_vocs
 
 
-def save_output(detected_df, output_path, output_format):
+class DiarizationSimulator:
     """
-    Save the output in the specified format.
+    Main class for diarization simulation.
+
+    This class provides methods to simulate speaker diarization detection
+    based on true vocalization counts.
+    """
+
+    def __init__(self, algorithm: str = "vtc", distribution: str = "poisson"):
+        """
+        Initialize the simulator.
+
+        Args:
+            algorithm: Algorithm to simulate ("vtc" or "lena")
+            distribution: Distribution type ("poisson" or "gamma")
+        """
+        self.algorithm = algorithm.lower()
+        self.distribution = distribution.lower()
+        self.speakers = ["CHI", "OCH", "FEM", "MAL"]
+
+        if self.algorithm not in ["vtc", "lena"]:
+            raise ValueError("Algorithm must be 'vtc' or 'lena'")
+        if self.distribution not in ["poisson", "gamma"]:
+            raise ValueError("Distribution must be 'poisson' or 'gamma'")
+
+        self._load_hyperparameters()
+
+    def _load_hyperparameters(self):
+        """Load hyperparameters from the data files."""
+        try:
+            data_path = files("diarization_simulation") / "data" / f"{self.algorithm}.npz"
+            samples_location = str(data_path)
+        except ImportError:
+            # Fallback to relative path if package not found
+            samples_location = f"data/{self.algorithm}.npz"
+
+        if not os.path.exists(samples_location):
+            raise FileNotFoundError(f"Hyperparameter file not found: {samples_location}")
+
+        self.samples = np.load(samples_location)
+        self.n_available_samples = self.samples["mus"].shape[0]
+
+        # Extract hyperparameters
+        self.mu_ = self.samples["mus"]
+        self.alpha_ = self.samples["alphas"]
+        self.tau_ = self.samples["tau"]
+
+        # Calculate means
+        self.mu_mean = self.mu_.mean(axis=0)
+        self.alpha_mean = self.alpha_.mean(axis=0)
+        self.tau_mean = self.tau_.mean(axis=0)
+
+    def simulate(self,
+                 truth_data: Union[str, pd.DataFrame],
+                 n_samples: int = 1000,
+                 hyperprior_mode: str = "sample",
+                 random_seed: Optional[int] = None,
+                 verbose: bool = True) -> pd.DataFrame:
+        """
+        Simulate diarization detections.
+
+        Args:
+            truth_data: Path to CSV file or DataFrame containing true vocalization counts
+            n_samples: Number of samples to generate per observation
+            hyperprior_mode: How to handle hyperpriors:
+                - "sample": Each sample gets its own hyperpriors (default)
+                - "average": Use mean hyperprior values
+                - "unique": Use same hyperpriors for all samples
+            random_seed: Random seed for reproducibility
+            verbose: Whether to show progress bar
+
+        Returns:
+            DataFrame with simulated detections
+        """
+        if random_seed is not None:
+            np.random.seed(random_seed)
+            random.seed(random_seed)
+
+        # Load truth data
+        if isinstance(truth_data, str):
+            recs = pd.read_csv(truth_data)
+        else:
+            recs = truth_data.copy()
+
+        # Validate required columns
+        if not set(self.speakers).issubset(recs.columns):
+            raise ValueError(f"Truth data must contain all speakers: {self.speakers}")
+
+        n_recs = len(recs)
+        true_vocs = np.stack(recs[self.speakers].values)
+        observation = recs["observation"].values if "observation" in recs.columns else np.arange(n_recs)
+
+        # Initialize detection arrays
+        detected = {speaker: [] for speaker in self.speakers}
+        detected["observation"] = []
+        detected["sample"] = []
+
+        # Set up hyperprior sampling
+        drawn = np.random.choice(np.arange(self.n_available_samples), n_samples)
+        distribution_type = 0 if self.distribution == "poisson" else 1
+
+        # Warning messages
+        if hyperprior_mode == "sample" and verbose:
+            print("\033[94mINFO\033[0m: Each sample will have its own hyperpriors. "
+                  "This captures uncertainty about algorithm behavior.")
+        elif hyperprior_mode == "unique" and verbose:
+            print("\033[93mWARNING\033[0m: Using unique hyperpriors for all samples. "
+                  "Consider generating multiple datasets with different seeds.")
+
+        # Simulation loop
+        iterator = tqdm(enumerate(drawn), total=len(drawn), desc="Simulating") if verbose else enumerate(drawn)
+
+        for n, s in iterator:
+            # Select hyperpriors based on mode
+            if hyperprior_mode == "unique":
+                draw = drawn[0]
+            elif hyperprior_mode == "sample":
+                draw = s
+            else:  # average
+                draw = None
+
+            if hyperprior_mode == "average":
+                current_mu = self.mu_mean
+                current_alpha = self.alpha_mean
+                current_tau = self.tau_mean
+            else:
+                current_mu = self.mu_[draw]
+                current_alpha = self.alpha_[draw]
+                current_tau = self.tau_[draw]
+
+            # Call the numba function
+            sample_detections = simulate_sample(
+                true_vocs,
+                current_alpha,
+                current_mu,
+                current_tau,
+                n_recs,
+                len(self.speakers),
+                distribution_type
+            )
+
+            # Store results
+            for k in range(n_recs):
+                for j, speaker in enumerate(self.speakers):
+                    detected[speaker].append(sample_detections[k, j])
+
+                detected["observation"].append(observation[k])
+                detected["sample"].append(n)
+
+        # Create and return DataFrame
+        detected_df = pd.DataFrame(detected)
+        detected_df = detected_df.sort_values(["sample", "observation"]).reset_index(drop=True)
+
+        return detected_df
+
+    def save_results(self,
+                     results: pd.DataFrame,
+                     output_path: str,
+                     format: str = "csv"):
+        """
+        Save simulation results to file.
+
+        Args:
+            results: DataFrame with simulation results
+            output_path: Output file path
+            format: Output format ("csv", "parquet", "npz")
+        """
+        output_path = Path(output_path)
+        base_path = output_path.with_suffix('')
+
+        if format == 'csv':
+            output_file = base_path.with_suffix('.csv')
+            results.to_csv(output_file, index=False)
+            print(f"Results saved to: {output_file}")
+
+        elif format == 'parquet':
+            output_file = base_path.with_suffix('.parquet')
+            results.to_parquet(output_file, index=False)
+            print(f"Results saved to: {output_file}")
+
+        elif format == 'npz':
+            output_file = base_path.with_suffix('.npz')
+
+            # Convert DataFrame to numpy arrays for npz format
+            data_dict = {}
+            for col in results.columns:
+                data_dict[col] = results[col].values
+
+            np.savez_compressed(output_file, **data_dict)
+            print(f"Results saved to: {output_file}")
+
+        else:
+            raise ValueError("Format must be 'csv', 'parquet', or 'npz'")
+
+
+def simulate_diarization(truth_data: Union[str, pd.DataFrame],
+                         algorithm: str = "vtc",
+                         distribution: str = "poisson",
+                         n_samples: int = 1000,
+                         hyperprior_mode: str = "sample",
+                         random_seed: Optional[int] = None,
+                         verbose: bool = True) -> pd.DataFrame:
+    """
+    Convenience function to simulate diarization detections.
+
+    This is a simplified interface to the DiarizationSimulator class.
 
     Args:
-        detected_df: pandas DataFrame with the results
-        output_path: base path for output file
-        output_format: format to save ('csv', 'parquet', 'npz')
+        truth_data: Path to CSV file or DataFrame containing true vocalization counts
+        algorithm: Algorithm to simulate ("vtc" or "lena")
+        distribution: Distribution type ("poisson" or "gamma")
+        n_samples: Number of samples to generate per observation
+        hyperprior_mode: How to handle hyperpriors ("sample", "average", "unique")
+        random_seed: Random seed for reproducibility
+        verbose: Whether to show progress bar
+
+    Returns:
+        DataFrame with simulated detections
+
+    Example:
+        >>> import pandas as pd
+        >>> # Create sample truth data
+        >>> truth_df = pd.DataFrame({
+        ...     'observation': [1, 2, 3],
+        ...     'CHI': [10, 15, 8],
+        ...     'OCH': [5, 3, 12],
+        ...     'FEM': [20, 18, 25],
+        ...     'MAL': [12, 10, 15]
+        ... })
+        >>>
+        >>> # Simulate detections
+        >>> results = simulate_diarization(
+        ...     truth_data=truth_df,
+        ...     algorithm="vtc",
+        ...     n_samples=100,
+        ...     random_seed=42
+        ... )
+        >>> print(results.head())
     """
-    base_path = os.path.splitext(output_path)[0]
-
-    if output_format == 'csv':
-        output_file = f"{base_path}.csv"
-        detected_df.to_csv(output_file, index=False)
-        print(f"Results saved to: {output_file}")
-
-    elif output_format == 'parquet':
-        output_file = f"{base_path}.parquet"
-        detected_df.to_parquet(output_file, index=False)
-        print(f"Results saved to: {output_file}")
-
-    elif output_format == 'npz':
-        output_file = f"{base_path}.npz"
-
-        # Convert DataFrame to numpy arrays for npz format
-        data_dict = {}
-        for col in detected_df.columns:
-            data_dict[col] = detected_df[col].values
-
-        np.savez_compressed(output_file, **data_dict)
-        print(f"Results saved to: {output_file}")
+    simulator = DiarizationSimulator(algorithm=algorithm, distribution=distribution)
+    return simulator.simulate(
+        truth_data=truth_data,
+        n_samples=n_samples,
+        hyperprior_mode=hyperprior_mode,
+        random_seed=random_seed,
+        verbose=verbose
+    )
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    """Command-line interface (maintains backward compatibility)."""
+    parser = argparse.ArgumentParser(description="Simulate diarization detections")
     parser.add_argument(
         "--truth",
         required=True,
         help="Path to the synthetic truth dataset (in csv format)",
     )
-    parser.add_argument("--output", required=True, help="Location of the output CSV")
+    parser.add_argument("--output", required=True, help="Location of the output file")
     parser.add_argument(
         "--output-format",
         choices=["csv", "parquet", "npz"],
@@ -126,92 +342,39 @@ def main():
     parser.add_argument(
         "--distribution",
         choices=["poisson", "gamma"],
-        help="Distribution for vocalization counts. We propose two approximation schemes for the underlying distribution: a Poisson scheme (which inflates the variance a bit), and a gamma scheme (which tries to capture the correct variance, but is a poor approximation for small numbers.)",
+        default="poisson",
+        help="Distribution for vocalization counts"
+    )
+    parser.add_argument(
+        "--seed", type=int, help="Random seed for reproducibility"
     )
 
     args = parser.parse_args()
 
-    if args.average_hyperpriors == False and args.unique_hyperpriors == False:
-        print(
-            "\033[94mWARNING\033[0m: Each sample will have its own hyperpriors (mu, alpha, tau). This is fine but results in larger dispersion, capturing our uncertainty about the algorithm behavior. Consider using --average-hyperpriors or --unique-hyperpriors if this is not what you want.")
+    # Determine hyperprior mode
+    if args.average_hyperpriors:
+        hyperprior_mode = "average"
+    elif args.unique_hyperpriors:
+        hyperprior_mode = "unique"
+    else:
+        hyperprior_mode = "sample"
 
-    if args.unique_hyperpriors:
-        print(
-            "\033[93mWARNING\033[0m: Using --unique-hyperpriors will draw the same hyperpriors once for all simulated samples. If you do this, you want want to generate multiple datasets to make sure your results are consistent with different hyperpriors.")
+    # Create simulator and run simulation
+    simulator = DiarizationSimulator(
+        algorithm=args.algo,
+        distribution=args.distribution
+    )
 
-    speakers = ["CHI", "OCH", "FEM", "MAL"]
+    results = simulator.simulate(
+        truth_data=args.truth,
+        n_samples=args.samples,
+        hyperprior_mode=hyperprior_mode,
+        random_seed=args.seed,
+        verbose=True
+    )
 
-    samples_location = f"output/{args.algo}.npz"
-
-    # Replace pkg_resources with importlib.resources
-    try:
-        data_path = files("diarization_simulation") / "data" / f"{args.algo}.npz"
-        samples_location = str(data_path)
-    except ImportError:
-        # Fallback to relative path if package not found
-        samples_location = f"data/{args.algo}.npz"
-
-    samples = np.load(samples_location)
-
-    # Load truth data
-    recs = pd.read_csv(args.truth)
-
-    assert set(speakers).issubset(
-        recs.columns
-    ), "Truth data must contain all speakers (CHI, OCH, FEM, MAL)"
-
-    n_recs = len(recs)
-    true_vocs = np.stack(recs[speakers].values)
-    observation = recs["observation"].values
-
-    # Initialize detection arrays
-    detected = {speaker: [] for speaker in speakers}
-    detected["observation"] = []
-    detected["sample"] = []
-
-    # Extract hyperparameters
-    n_available_samples = samples["mus"].shape[0]
-
-    mu_ = samples["mus"]
-    alpha_ = samples["alphas"]
-    tau_ = samples["tau"]
-
-    mu = mu_.mean(axis=0)
-    alpha = alpha_.mean(axis=0)
-    tau = tau_.mean(axis=0)
-
-    drawn = np.random.choice(np.arange(n_available_samples), args.samples)
-    distribution_type = 0 if args.distribution == "poisson" else 1
-
-    for n, s in tqdm(enumerate(drawn)):
-        draw = drawn[0] if args.unique_hyperpriors else drawn[s]
-        current_mu = mu if args.average_hyperpriors else mu_[draw]
-        current_alpha = alpha if args.average_hyperpriors else alpha_[draw]
-        current_tau = tau if args.average_hyperpriors else tau_[draw]
-
-        # Call the numba function
-        sample_detections = simulate_sample(
-            true_vocs,
-            current_alpha,
-            current_mu,
-            current_tau,
-            n_recs,
-            len(speakers),
-            distribution_type
-        )
-
-        # Store results
-        for k in range(n_recs):
-            for j, speaker in enumerate(speakers):
-                detected[speaker].append(sample_detections[k, j])
-
-            detected["observation"].append(observation[k])
-            detected["sample"].append(n)
-
-    # Create DataFrame and save results
-    detected_df = pd.DataFrame(detected)
-    detected_df.sort_values(["sample", "observation"], inplace=True)
-    save_output(detected_df, args.output, args.output_format)
+    # Save results
+    simulator.save_results(results, args.output, args.output_format)
 
 
 if __name__ == "__main__":
