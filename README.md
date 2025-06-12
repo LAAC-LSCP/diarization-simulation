@@ -11,8 +11,8 @@ speech output and their speech input in naturalistic daylong recordings.
 
 ![](docs/vocalization_counts.png)
 
-However, algorithms make errors (e.g. by confusing speakers for one another) which propagate into the measured
-vocalization counts, leading to biases in downstream analyses.
+However, algorithms make errors (e.g. by mistaking speakers for one another) which propagate into the measured
+vocalization counts, introducing biases in downstream analyses.
 Simulating diarization algorithms can help assess the sensitivity of a statistical analysis to classification errors.
 For instance, simulations can help determine whether correlations between speakers' speech quantities are entirely
 consistent with spurious correlations due to classification errors.
