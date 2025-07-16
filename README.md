@@ -264,4 +264,22 @@ You will need Python 3.8+ to run this package. Key dependencies include:
 
 ## Citation
 
-XXX
+If you use this package, please mention both of the following references:
+
+```bib
+@online{diarization-simulation,
+author={Lucas Gautheron},
+year=2025,
+title={Diarization Simulation: A Python package for simulating speaker diarization with {LENA and VTC} from ground truth vocalization data},
+url={https://github.com/LAAC-LSCP/diarization-simulation}
+}
+
+@misc{Gautheron2025,
+  title = {Classification errors distort findings in automated speech processing: examples and solutions from child-development research},
+  url = {http://dx.doi.org/10.31234/osf.io/u925y_v1},
+  publisher = {Center for Open Science},
+  author = {Gautheron,  Lucas and Kidd,  Evan and Malko,  Anton and Lavechin,  Marvin and Cristia,  Alejandrina},
+  year = {2025},
+  month = jul 
+}
+```
