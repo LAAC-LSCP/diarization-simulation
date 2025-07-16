@@ -277,9 +277,7 @@ url={https://github.com/LAAC-LSCP/diarization-simulation}
 @misc{Gautheron2025,
   title = {Classification errors distort findings in automated speech processing: examples and solutions from child-development research},
   url = {http://dx.doi.org/10.31234/osf.io/u925y_v1},
-  publisher = {Center for Open Science},
   author = {Gautheron,  Lucas and Kidd,  Evan and Malko,  Anton and Lavechin,  Marvin and Cristia,  Alejandrina},
   year = {2025},
-  month = jul 
 }
 ```
