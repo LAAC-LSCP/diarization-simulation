@@ -10,12 +10,14 @@ import argparse
 
 def generate_ground_truth(
         corpus: str, annotator: str, recordings: list = None,
-        n_samples: int = 1000,
+        n_samples: int = 1000, mode: bool = False,
 ):
     """
     :param corpus: path to the childproject corpus
     :param annotator: annotation set containing the manual annotations
     :param recordings: whitelist of recordings (optional)
+    :param n_samples: number of samples to generate
+    :param mode: if True, use mode point estimates instead of full posterior sampling
     :return: pd.DataFrame with simulated ground truth annotations and four columns
     """
 
@@ -61,10 +63,10 @@ def generate_ground_truth(
         annotated_data.append(data.copy())
 
     annotated_data = pd.DataFrame(annotated_data)
-    print(annotated_data)
 
     N = len(annotated_data)
     K = len(recordings)
+    recording_filenames = recordings["recording_filename"].values
 
     # Prepare data for Stan
     data = {
@@ -76,7 +78,7 @@ def generate_ground_truth(
         'full_duration': recordings["duration"],
     }
 
-    # Build and fit model
+    # Build model
     print("Building Stan model...")
     stan_code = """
     data {
@@ -87,13 +89,13 @@ def generate_ground_truth(
       vector[N] annotated_duration;
       vector[K] full_duration;
     }
-    
+
     parameters {
       array[N, C] real<lower=0> rates;
       vector<lower=0>[C] shape;
       vector<lower=0>[C] rate;
     }
-    
+
     model {
       for (i in 1:N) {
         for (c in 1:C) {
@@ -101,13 +103,13 @@ def generate_ground_truth(
           rates[i, c] ~ gamma(shape[c], shape[c]/rate[c]);
         }
       }
-    
+
       for (c in 1:C) {
-        shape[c] ~ exponential(1);
-        rate[c] ~ exponential(4);
+        shape[c] ~ gamma(4.0, 4.0);
+        rate[c] ~ exponential(1.0/(250.0/3600.0)); // assumes 250 vocs/hour
       }
     }
-    
+
     generated quantities {
         array[K,C] int samples;
         for (k in 1:K) {
@@ -124,27 +126,53 @@ def generate_ground_truth(
         tmp.write(stan_code)
 
     model = CmdStanModel(stan_file=tmp_file.name)
+
+    # Full posterior sampling
     fit = model.sample(
         data=data, chains=1, iter_warmup=1000,
-        iter_sampling=np.maximum(n_samples, 1000),
+        iter_sampling=np.maximum(n_samples, 10000),
     )
     variables = fit.stan_variables()
+    sampler = fit.method_variables()
+    posterior_mode = sampler["lp__"].argmax()
 
-    recording_filenames = recordings["recording_filename"].values
     samples = variables["samples"]
-
     df = []
-    keep = np.random.choice(np.arange(samples.shape[0]), size=n_samples)
 
-    for i, s in enumerate(keep):
-        for k in range(K):
-            data = {
-                speakers[c]: samples[s, k, c]
-                for c in range(C)
-            }
-            data["observation"] = recording_filenames[k]
-            data["sample"] = i
-            df.append(data.copy())
+    print(mode)
+
+    if mode:
+        for i in range(n_samples):
+            for k in range(K):
+                data_row = {}
+                for c, speaker in enumerate(speakers):
+                    # Sample rate from gamma distribution with mode parameters
+                    rate = gamma.rvs(
+                        a=variables["shape"][posterior_mode, c],
+                        scale=variables["rate"][posterior_mode, c] /
+                              variables["shape"][
+                                  posterior_mode, c],
+                    )
+                    # Sample vocalizations from Poisson with this rate
+                    data_row[speaker] = poisson.rvs(
+                        rate * recordings["duration"].iloc[k],
+                    )
+
+                data_row["observation"] = recording_filenames[k]
+                data_row["sample"] = i
+                df.append(data_row.copy())
+    else:
+        keep = np.random.choice(np.arange(samples.shape[0]), size=n_samples)
+
+        for i, s in enumerate(keep):
+            for k in range(K):
+                data_row = {
+                    speakers[c]: samples[s, k, c]
+                    for c in range(C)
+                }
+                data_row["observation"] = recording_filenames[k]
+                data_row["sample"] = i
+                df.append(data_row.copy())
 
     df = pd.DataFrame(df)
     return df
@@ -176,11 +204,17 @@ def main():
         "--samples", type=int, default=1000,
         help="Number of samples",
     )
+    parser.add_argument(
+        "--mode", action="store_true",
+        default=False,
+        help="Sample from the mode of the posterior distribution of the hyperparameters.",
+    )
 
     args = parser.parse_args()
 
     df = generate_ground_truth(
-        args.corpus, args.annotator, args.recordings, n_samples=args.samples,
+        args.corpus, args.annotator, args.recordings,
+        n_samples=args.samples, mode=args.mode,
     )
 
     df.to_csv(args.output)
