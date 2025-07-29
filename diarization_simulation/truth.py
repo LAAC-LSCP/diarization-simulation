@@ -156,8 +156,8 @@ def generate_ground_truth(
                         rate * recordings["duration"].iloc[k],
                     )
 
-                data_row["observation"] = recording_filenames[k]
-                data_row["sample"] = i
+                data_row["recording_filename"] = recording_filenames[k]
+                data_row["observation"] = f"{recording_filenames[k]},{i}"
                 df.append(data_row.copy())
     else:
         keep = np.random.choice(np.arange(samples.shape[0]), size=n_samples)
@@ -168,8 +168,8 @@ def generate_ground_truth(
                     speakers[c]: samples[s, k, c]
                     for c in range(C)
                 }
-                data_row["observation"] = recording_filenames[k]
-                data_row["sample"] = i
+                data_row["recording_filename"] = recording_filenames[k]
+                data_row["observation"] = f"{recording_filenames[k]},{i}"
                 df.append(data_row.copy())
 
     df = pd.DataFrame(df)
@@ -179,7 +179,7 @@ def generate_ground_truth(
 def main():
     """Command-line interface (maintains backward compatibility)."""
     parser = argparse.ArgumentParser(
-        description="Simulate vocalization counts",
+        description="Simulate ground-truth vocalization counts for each recording of a corpus given sparse manual annotations",
     )
     parser.add_argument(
         "--corpus",
