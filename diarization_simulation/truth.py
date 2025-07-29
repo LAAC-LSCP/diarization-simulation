@@ -139,8 +139,6 @@ def generate_ground_truth(
     samples = variables["samples"]
     df = []
 
-    print(mode)
-
     if mode:
         for i in range(n_samples):
             for k in range(K):
