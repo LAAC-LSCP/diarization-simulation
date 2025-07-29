@@ -109,6 +109,95 @@ sample,observation,CHI,OCH,FEM,MAL
 ...
 ```
 
+## Ground Truth Generation
+
+The package includes functionality to generate synthetic ground truth data from real corpus annotations using the
+`truth-simulate` command-line tool. This is useful when you have sparse manual annotations and want to generate complete
+ground truth datasets for simulation.
+
+### Command-line Interface for Ground Truth Generation
+
+```bash
+truth-simulate --corpus path/to/corpus \
+               --annotator annotation_set_name \
+               --output path/to/ground_truth.csv \
+               --samples 1000
+```
+
+#### Command-line Arguments for `truth-simulate`
+
+We also provide a tool for generating synthetic datasets reproducing the characteristics of a real corpus.
+The corpus must be compatible with the [ChildProject](https://github.com/LAAC-LSCP/ChildProject) python package (which should also be installed).
+
+| Argument       | Description                                                           | Default  |
+|----------------|-----------------------------------------------------------------------|----------|
+| `--corpus`     | Path to the input ChildProject corpus                                 | Required |
+| `--annotator`  | Annotation set containing the manual annotations                      | Required |
+| `--output`     | Location of the output file                                           | Required |
+| `--recordings` | Optional whitelist of specific recordings to process                  | None     |
+| `--samples`    | Number of samples to generate                                         | 1000     |
+| `--mode`       | Sample from the mode of the posterior distribution of hyperparameters | False    |
+
+### How Ground Truth Generation Works
+
+The `truth-simulate` tool uses a Bayesian hierarchical model to infer vocalization rate distributions from sparse manual
+annotations and then generates complete ground truth datasets. The process works as follows:
+
+1. **Load corpus data**: Reads a ChildProject corpus containing recordings and manual annotations
+2. **Extract annotation statistics**: Counts vocalizations per speaker type (CHI, OCH, FEM, MAL) in manually annotated
+   segments
+3. **Fit hierarchical model**: Uses Stan to fit a Gamma-Poisson model that estimates vocalization rates per speaker
+   across the corpus
+4. **Generate samples**: Produces synthetic ground truth vocalization counts for all recordings in the corpus
+
+### Ground Truth Output Format
+
+The output CSV contains synthetic ground truth data with the following columns:
+
+- `recording_filename`: Original recording filename
+- `observation`: Unique identifier combining recording filename and sample number (e.g., "recording_001.wav,0")
+- `CHI`: Simulated child vocalization count
+- `OCH`: Simulated other child vocalization count
+- `FEM`: Simulated female adult vocalization count
+- `MAL`: Simulated male adult vocalization count
+
+Example output:
+
+```csv
+recording_filename,observation,CHI,OCH,FEM,MAL
+recording_001.wav,"recording_001.wav,0",145,23,198,67
+recording_002.wav,"recording_002.wav,0",112,18,176,45
+recording_001.wav,"recording_001.wav,1",138,25,203,72
+recording_002.wav,"recording_002.wav,1",119,16,181,49
+...
+```
+
+The output contains KxN rows where K is the number of recordings and N the number of samples requested.
+
+### Typical Workflow
+
+A complete simulation workflow typically involves two steps:
+
+1. **Generate ground truth** from your corpus annotations:
+
+```bash
+truth-simulate --corpus /path/to/corpus \
+               --annotator human_annotations \
+               --output ground_truth.csv \
+               --samples 100
+```
+
+2. **Simulate diarization** on the generated ground truth:
+
+```bash
+diarization-simulate --truth ground_truth.csv \
+                    --output simulated_detections.csv \
+                    --algo vtc \
+                    --samples 100
+```
+
+The output `simulated_detections.csv` will contain 100x100xK rows, where K is the number of recordings in the dataset.
+
 ### Python API
 
 #### Quick Start
@@ -118,13 +207,15 @@ import pandas as pd
 from diarization_simulation import simulate_diarization
 
 # Create or load your truth data
-truth_df = pd.DataFrame({
-    'observation': [1, 2, 3],
-    'CHI': [120, 90, 150],
-    'OCH': [30, 15, 25],
-    'FEM': [200, 180, 220],
-    'MAL': [50, 70, 45]
-})
+truth_df = pd.DataFrame(
+    {
+        'observation': [1, 2, 3],
+        'CHI': [120, 90, 150],
+        'OCH': [30, 15, 25],
+        'FEM': [200, 180, 220],
+        'MAL': [50, 70, 45]
+    }
+)
 
 # Simulate detections
 results = simulate_diarization(
