@@ -20,7 +20,9 @@ from numba import jit
 
 
 @jit(nopython=True)
-def simulate_sample(true_vocs, alpha, mu, tau, n_recs, n_speakers, distribution_type):
+def simulate_sample(
+        true_vocs, alpha, mu, tau, n_recs, n_speakers, distribution_type,
+):
     """
     Numba-optimized function to simulate detections for a single sample.
 
@@ -53,7 +55,7 @@ def simulate_sample(true_vocs, alpha, mu, tau, n_recs, n_speakers, distribution_
                         sd = np.sqrt(mean / tau)
                         shape = (mean / sd) ** 2
                         detected_vocs[k, j] += int(
-                            np.random.gamma(shape, mean / shape) + 0.5
+                            np.random.gamma(shape, mean / shape) + 0.5,
                         )
 
     return detected_vocs
@@ -89,14 +91,18 @@ class DiarizationSimulator:
     def _load_hyperparameters(self):
         """Load hyperparameters from the data files."""
         try:
-            data_path = files("diarization_simulation") / "data" / f"{self.algorithm}.npz"
+            data_path = files(
+                "diarization_simulation",
+            ) / "data" / f"{self.algorithm}.npz"
             samples_location = str(data_path)
         except ImportError:
             # Fallback to relative path if package not found
             samples_location = f"data/{self.algorithm}.npz"
 
         if not os.path.exists(samples_location):
-            raise FileNotFoundError(f"Hyperparameter file not found: {samples_location}")
+            raise FileNotFoundError(
+                f"Hyperparameter file not found: {samples_location}",
+            )
 
         self.samples = np.load(samples_location)
         self.n_available_samples = self.samples["mus"].shape[0]
@@ -111,12 +117,14 @@ class DiarizationSimulator:
         self.alpha_mean = self.alpha_.mean(axis=0)
         self.tau_mean = self.tau_.mean(axis=0)
 
-    def simulate(self,
-                 truth_data: Union[str, pd.DataFrame],
-                 n_samples: int = 1000,
-                 hyperprior_mode: str = "sample",
-                 random_seed: Optional[int] = None,
-                 verbose: bool = True) -> pd.DataFrame:
+    def simulate(
+            self,
+            truth_data: Union[str, pd.DataFrame],
+            n_samples: int = 1000,
+            hyperprior_mode: str = "sample",
+            random_seed: Optional[int] = None,
+            verbose: bool = True,
+    ) -> pd.DataFrame:
         """
         Simulate diarization detections.
 
@@ -145,11 +153,16 @@ class DiarizationSimulator:
 
         # Validate required columns
         if not set(self.speakers).issubset(recs.columns):
-            raise ValueError(f"Truth data must contain all speakers: {self.speakers}")
+            raise ValueError(
+                f"Truth data must contain all speakers: {self.speakers}",
+            )
 
         n_recs = len(recs)
         true_vocs = np.stack(recs[self.speakers].values)
-        observation = recs["observation"].values if "observation" in recs.columns else np.arange(n_recs)
+        observation = recs[
+            "observation"].values if "observation" in recs.columns else np.arange(
+            n_recs,
+        )
 
         # Initialize detection arrays
         detected = {speaker: [] for speaker in self.speakers}
@@ -162,14 +175,20 @@ class DiarizationSimulator:
 
         # Warning messages
         if hyperprior_mode == "sample" and verbose:
-            print("\033[94mINFO\033[0m: Each sample will have its own hyperpriors. "
-                  "This captures uncertainty about algorithm behavior.")
+            print(
+                "\033[94mINFO\033[0m: Each sample will have its own hyperpriors. "
+                "This captures uncertainty about algorithm behavior.",
+            )
         elif hyperprior_mode == "unique" and verbose:
-            print("\033[93mWARNING\033[0m: Using unique hyperpriors for all samples. "
-                  "Consider generating multiple datasets with different seeds.")
+            print(
+                "\033[93mWARNING\033[0m: Using unique hyperpriors for all samples. "
+                "Consider generating multiple datasets with different seeds.",
+            )
 
         # Simulation loop
-        iterator = tqdm(enumerate(drawn), total=len(drawn), desc="Simulating") if verbose else enumerate(drawn)
+        iterator = tqdm(
+            enumerate(drawn), total=len(drawn), desc="Simulating",
+        ) if verbose else enumerate(drawn)
 
         for n, s in iterator:
             # Select hyperpriors based on mode
@@ -197,7 +216,7 @@ class DiarizationSimulator:
                 current_tau,
                 n_recs,
                 len(self.speakers),
-                distribution_type
+                distribution_type,
             )
 
             # Store results
@@ -210,14 +229,18 @@ class DiarizationSimulator:
 
         # Create and return DataFrame
         detected_df = pd.DataFrame(detected)
-        detected_df = detected_df.sort_values(["sample", "observation"]).reset_index(drop=True)
+        detected_df = detected_df.sort_values(
+            ["sample", "observation"],
+        ).reset_index(drop=True)
 
         return detected_df
 
-    def save_results(self,
-                     results: pd.DataFrame,
-                     output_path: str,
-                     format: str = "csv"):
+    def save_results(
+            self,
+            results: pd.DataFrame,
+            output_path: str,
+            format: str = "csv",
+    ):
         """
         Save simulation results to file.
 
@@ -254,13 +277,15 @@ class DiarizationSimulator:
             raise ValueError("Format must be 'csv', 'parquet', or 'npz'")
 
 
-def simulate_diarization(truth_data: Union[str, pd.DataFrame],
-                         algorithm: str = "vtc",
-                         distribution: str = "poisson",
-                         n_samples: int = 1000,
-                         hyperprior_mode: str = "sample",
-                         random_seed: Optional[int] = None,
-                         verbose: bool = True) -> pd.DataFrame:
+def simulate_diarization(
+        truth_data: Union[str, pd.DataFrame],
+        algorithm: str = "vtc",
+        distribution: str = "poisson",
+        n_samples: int = 1000,
+        hyperprior_mode: str = "sample",
+        random_seed: Optional[int] = None,
+        verbose: bool = True,
+) -> pd.DataFrame:
     """
     Convenience function to simulate diarization detections.
 
@@ -298,33 +323,39 @@ def simulate_diarization(truth_data: Union[str, pd.DataFrame],
         ... )
         >>> print(results.head())
     """
-    simulator = DiarizationSimulator(algorithm=algorithm, distribution=distribution)
+    simulator = DiarizationSimulator(
+        algorithm=algorithm, distribution=distribution,
+    )
     return simulator.simulate(
         truth_data=truth_data,
         n_samples=n_samples,
         hyperprior_mode=hyperprior_mode,
         random_seed=random_seed,
-        verbose=verbose
+        verbose=verbose,
     )
-
 
 def main():
     """Command-line interface (maintains backward compatibility)."""
-    parser = argparse.ArgumentParser(description="Simulate diarization detections")
+    parser = argparse.ArgumentParser(
+        description="Simulate diarization detections",
+    )
     parser.add_argument(
         "--truth",
         required=True,
         help="Path to the synthetic truth dataset (in csv format)",
     )
-    parser.add_argument("--output", required=True, help="Location of the output file")
+    parser.add_argument(
+        "--output", required=True, help="Location of the output file",
+    )
     parser.add_argument(
         "--output-format",
         choices=["csv", "parquet", "npz"],
         default="csv",
-        help="Output file format (default: csv)"
+        help="Output file format (default: csv)",
     )
     parser.add_argument(
-        "--samples", type=int, default=1000, help="Number of samples per observation"
+        "--samples", type=int, default=1000,
+        help="Number of samples per observation",
     )
     parser.add_argument(
         "--average-hyperpriors",
@@ -337,16 +368,17 @@ def main():
         help="Use fixed hyperpriors (mu and alpha) throughout all samples",
     )
     parser.add_argument(
-        "--algo", choices=["vtc", "lena"], required=True, help="Algorithm to simulate"
+        "--algo", choices=["vtc", "lena"], required=True,
+        help="Algorithm to simulate",
     )
     parser.add_argument(
         "--distribution",
         choices=["poisson", "gamma"],
         default="poisson",
-        help="Distribution for vocalization counts"
+        help="Distribution for vocalization counts",
     )
     parser.add_argument(
-        "--seed", type=int, help="Random seed for reproducibility"
+        "--seed", type=int, help="Random seed for reproducibility",
     )
 
     args = parser.parse_args()
@@ -362,7 +394,7 @@ def main():
     # Create simulator and run simulation
     simulator = DiarizationSimulator(
         algorithm=args.algo,
-        distribution=args.distribution
+        distribution=args.distribution,
     )
 
     results = simulator.simulate(
@@ -370,7 +402,7 @@ def main():
         n_samples=args.samples,
         hyperprior_mode=hyperprior_mode,
         random_seed=args.seed,
-        verbose=True
+        verbose=True,
     )
 
     # Save results

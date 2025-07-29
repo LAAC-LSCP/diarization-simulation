@@ -16,7 +16,8 @@ dependencies = [
 ]
 
 [project.scripts]
-diarization-simulate = "diarization_simulation.simulate:main"
+diarization-simulate = "diarization_simulation.diarization:main"
+truth-simulate = "diarization_simulation.truth:main"
 
 [tool.setuptools.package-data]
 diarization_simulation = ["data/*.npz"]
