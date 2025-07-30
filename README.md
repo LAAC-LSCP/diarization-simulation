@@ -43,7 +43,7 @@ The package can be used both programmatically (in Python scripts, notebooks, etc
 
 ### Command-line Interface
 
-The package also provides a command-line tool `diarization-simulate`:
+The main command line interfaced can be accessed through `diarization-simulate`:
 
 ```bash
 diarization-simulate --truth path/to/truth.csv \
@@ -109,11 +109,11 @@ sample,observation,CHI,OCH,FEM,MAL
 ...
 ```
 
-## Ground Truth Generation
+## Synthetic Ground Truth Generation
 
-The package includes functionality to generate synthetic ground truth data from real corpus annotations using the
-`truth-simulate` command-line tool. This is useful when you have sparse manual annotations and want to generate complete
-ground truth datasets for simulation.
+The package includes a tool for generating synthetic ground truth data from real corpus annotations using the
+`truth-simulate` command-line tool. This is useful when you have sparse manual annotations describing the distribution of the quantity of speech in multiple recordings and want to generate realistic
+ground truth datasets.
 
 ### Command-line Interface for Ground Truth Generation
 
