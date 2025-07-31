@@ -346,6 +346,12 @@ You will need Python 3.8+ to run this package. Key dependencies include:
 - numba
 - tqdm
 
+For the generation of synthetic ground-truth data, you will also need the following packages:
+
+ - cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
+ - ChildProject
+
+
 ## Citation
 
 If you use this package, please mention both of the following references:
