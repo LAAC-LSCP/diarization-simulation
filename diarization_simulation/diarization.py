@@ -177,7 +177,7 @@ class DiarizationSimulator:
         if hyperprior_mode == "sample" and verbose:
             print(
                 "\033[94mINFO\033[0m: Each sample will have its own hyperpriors. "
-                "This captures uncertainty about algorithm behavior.",
+                "This captures uncertainty about the algorithm behavior.",
             )
         elif hyperprior_mode == "unique" and verbose:
             print(
@@ -208,7 +208,6 @@ class DiarizationSimulator:
                 current_alpha = self.alpha_[draw]
                 current_tau = self.tau_[draw]
 
-            # Call the numba function
             sample_detections = simulate_sample(
                 true_vocs,
                 current_alpha,
