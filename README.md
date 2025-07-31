@@ -5,28 +5,11 @@
   * [Overview](#overview)
   * [How It Works](#how-it-works)
   * [Statistical Model](#statistical-model)
-    * [Poisson Distribution Option](#poisson-distribution-option)
-    * [Gamma Distribution Option](#gamma-distribution-option)
-    * [Parameters](#parameters)
-    * [Model Characteristics](#model-characteristics)
   * [Installation](#installation)
   * [Usage](#usage)
-    * [Command-line Interface](#command-line-interface)
-      * [Command-line Arguments](#command-line-arguments)
-    * [Input Format](#input-format)
-    * [Output Format](#output-format)
   * [Synthetic Ground Truth Generation](#synthetic-ground-truth-generation)
-    * [Command-line Interface for Ground Truth Generation](#command-line-interface-for-ground-truth-generation)
-      * [Command-line Arguments for `truth-simulate`](#command-line-arguments-for-truth-simulate)
-    * [How Ground Truth Generation Works](#how-ground-truth-generation-works)
-    * [Ground Truth Output Format](#ground-truth-output-format)
-    * [Typical Workflow](#typical-workflow)
-    * [Python API](#python-api)
-      * [Quick Start](#quick-start)
-      * [Working with DataFrames](#working-with-dataframes)
-      * [API Parameters](#api-parameters)
-  * [Development](#development)
-    * [Requirements](#requirements)
+  * [Typical Workflow](#typical-workflow)
+  * [Python API](#python-api-1)
   * [Citation](#citation)
 <!-- TOC -->
 
@@ -116,6 +99,22 @@ cd diarization-simulation
 # Install the package
 pip install -e .
 ```
+
+### Requirements
+
+You will need Python 3.8+ to run this package. Key dependencies include:
+
+- pandas
+- numpy
+- scipy
+- numba
+- tqdm
+
+For the generation of synthetic ground-truth data, you will also need the following packages:
+
+- cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
+- ChildProject
+
 
 ## Usage
 
@@ -256,7 +255,7 @@ recording_002.wav,"recording_002.wav,1",119,16,181,49
 
 The output contains KxN rows where K is the number of recordings and N the number of samples requested.
 
-### Typical Workflow
+## Typical Workflow
 
 A complete simulation workflow typically involves two steps:
 
@@ -333,7 +332,7 @@ print("Mean detections per observation:")
 print(mean_detections)
 ```
 
-#### API Parameters
+## Python API
 
 **`simulate_diarization()` function parameters:**
 
@@ -383,23 +382,6 @@ for key, result in results.items():
     correlation = result[['CHI', 'FEM']].corr().iloc[0, 1]
     print(f"{key}: CHI-FEM correlation = {correlation:.3f}")
 ```
-
-## Development
-
-### Requirements
-
-You will need Python 3.8+ to run this package. Key dependencies include:
-
-- pandas
-- numpy
-- scipy
-- numba
-- tqdm
-
-For the generation of synthetic ground-truth data, you will also need the following packages:
-
-- cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
-- ChildProject
 
 ## Citation
 
