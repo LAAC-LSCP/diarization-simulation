@@ -26,7 +26,6 @@ measured vocalization counts
 based on the detection and confusion rates of LENA and VTC. The confusion rates of these algorithms were measured on
 calibration data consisting of 30 hours of manual annotations.
 
-
 ## How It Works
 
 The simulation works by:
@@ -35,8 +34,7 @@ The simulation works by:
 2. Loading pre-computed hyperparameters characterizing the behavior of the chosen algorithm (VTC or LENA)
 3. For each sample and observation, generating "measured" vocalization counts using a statistical model representing the
    algorithm's behavior.
-4. Returning or saving the simulated detection results.
-5. 
+
 ## Statistical Model
 
 The simulation uses a hierarchical model where:
@@ -46,30 +44,36 @@ The simulation uses a hierarchical model where:
 
 ### Poisson Distribution Option
 
-$$\mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{ij})$$
+```math
+\mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{ij})
+```
 
-### Gamma Distribution Option  
+### Gamma Distribution Option
 
-$$\mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)\rfloor$$
+```math
+\mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)\rfloor
+```
 
 where the gamma distribution has:
+
 - Mean: $\mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{ij}$
 - Standard deviation: $\sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{ij}}{\tau}}$
 
 ### Parameters
 
-| Parameter | Description |
-|-----------|-------------|
-| $\lambda_{ij}$ | Detection rate from speaker $i$ to detected speaker $j$ |
-| $\mathrm{true}_{ij}$ | True vocalization count for speaker $i$ |
-| $\tau$ | Precision parameter used in the gamma distribution option |
-| $\alpha_{ij}, \mu_{ij}$ | Shape and scale parameters for the detection rate prior |
-| $\alpha, \beta$ | Shape and rate parameters for the gamma detection model |
+| Parameter               | Description                                               |
+|-------------------------|-----------------------------------------------------------|
+| $\lambda_{ij}$          | Detection rate from speaker $i$ to detected speaker $j$   |
+| $\mathrm{true}_{ij}$    | True vocalization count for speaker $i$                   |
+| $\tau$                  | Precision parameter used in the gamma distribution option |
+| $\alpha_{ij}, \mu_{ij}$ | Shape and scale parameters for the detection rate prior   |
+| $\alpha, \beta$         | Shape and rate parameters for the gamma detection model   |
 
 ### Model Characteristics
 
 - **Poisson scheme**: Slightly inflates the variance relative to the true underlying process
-- **Gamma scheme**: Attempts to capture the correct variance structure but may provide poor approximations for small count values
+- **Gamma scheme**: Attempts to capture the correct variance structure but may provide poor approximations for small
+  count values
 
 ## Installation
 
@@ -363,9 +367,8 @@ You will need Python 3.8+ to run this package. Key dependencies include:
 
 For the generation of synthetic ground-truth data, you will also need the following packages:
 
- - cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
- - ChildProject
-
+- cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
+- ChildProject
 
 ## Citation
 
