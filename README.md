@@ -36,25 +36,38 @@ The simulation works by:
 3. For each sample and observation, generating "measured" vocalization counts using a statistical model representing the
    algorithm's behavior.
 4. Returning or saving the simulated detection results.
-
+5. 
 ## Statistical Model
 
 The simulation uses a hierarchical model where:
 
-- `lambda_ij` ~ Gamma(alpha_ij, mu_ij/alpha_ij) represents detection rates
+- Detection rates follow: $\lambda_{ij} \sim \text{Gamma}(\alpha_{ij}, \mu_{ij}/\alpha_{ij})$
 - Detected vocalizations are generated using one of two distribution options:
-    - Poisson distribution: Detected ~ Poisson(lambda_ij * true_ij)
-    - Gamma distribution: Detected ~ Int(Gamma(alpha, beta)) with mean lambda_ij * true_ij and standard deviation sqrt(
-      lambda_ij * true_ij / tau)
 
-Where:
+### Poisson Distribution Option
+$$\text{Detected}_{ij} \sim \text{Poisson}(\lambda_{ij} \cdot \text{true}_{ij})$$
 
-- lambda_ij is the detection rate from speaker i to detected speaker j
-- true_ij is the true vocalization count for speaker i
-- tau is a precision parameter used in the gamma distribution option
+### Gamma Distribution Option  
+$$\text{Detected}_{ij} \sim \lfloor\text{Gamma}(\alpha, \beta)\rfloor$$
 
-The Poisson scheme slightly inflates the variance, and the gamma scheme attempts to capture the correct
-variance but may be a poor approximation for small counts.
+where the gamma distribution has:
+- Mean: $\mathbb{E}[\text{Detected}_{ij}] = \lambda_{ij} \cdot \text{true}_{ij}$
+- Standard deviation: $\sigma[\text{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \text{true}_{ij}}{\tau}}$
+
+### Parameters
+
+| Parameter | Description |
+|-----------|-------------|
+| $\lambda_{ij}$ | Detection rate from speaker $i$ to detected speaker $j$ |
+| $\text{true}_{ij}$ | True vocalization count for speaker $i$ |
+| $\tau$ | Precision parameter used in the gamma distribution option |
+| $\alpha_{ij}, \mu_{ij}$ | Shape and scale parameters for the detection rate prior |
+| $\alpha, \beta$ | Shape and rate parameters for the gamma detection model |
+
+### Model Characteristics
+
+- **Poisson scheme**: Slightly inflates the variance relative to the true underlying process
+- **Gamma scheme**: Attempts to capture the correct variance structure but may provide poor approximations for small count values
 
 ## Installation
 
