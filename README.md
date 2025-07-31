@@ -74,13 +74,13 @@ where the gamma distribution verifies:
 
 ### Parameters
 
-| Parameter               | Description                                               |
-|-------------------------|-----------------------------------------------------------|
-| $\lambda_{ij}$          | Detection rate from speaker $i$ to detected speaker $j$   |
-| $\mathrm{true}_{ij}$    | True vocalization count for speaker $i$                   |
-| $\tau$                  | Precision parameter used in the gamma distribution option |
-| $\alpha_{ij}, \mu_{ij}$ | Shape and scale parameters for the detection rate prior   |
-| $\alpha, \beta$         | Shape and rate parameters for the gamma detection model   |
+| Parameter               | Description                                             |
+|-------------------------|---------------------------------------------------------|
+| $\lambda_{ij}$          | Detection rate from speaker $i$ to detected speaker $j$ |
+| $\mathrm{true}_{ij}$    | True vocalization count for speaker $i$                 |
+| $\tau$                  | Underdispersion parameter                               |
+| $\alpha_{ij}, \mu_{ij}$ | Shape and scale parameters for the detection rate prior |
+| $\alpha, \beta$         | Shape and rate parameters for the gamma detection model |
 
 ### Model Characteristics
 
