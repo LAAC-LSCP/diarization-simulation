@@ -56,8 +56,9 @@ The simulation uses a hierarchical model where:
 
 where the gamma distribution has:
 
-- Mean: $\mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{ij}$
-- Standard deviation: $\sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{ij}}{\tau}}$
+```math
+\mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{ij} \text{ and } \sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{ij}}{\tau}}
+```
 
 ### Parameters
 
