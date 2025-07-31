@@ -26,6 +26,36 @@ measured vocalization counts
 based on the detection and confusion rates of LENA and VTC. The confusion rates of these algorithms were measured on
 calibration data consisting of 30 hours of manual annotations.
 
+
+## How It Works
+
+The simulation works by:
+
+1. Loading synthetic ground truth data (the "true" vocalization counts per speaker and per observation/recording)
+2. Loading pre-computed hyperparameters characterizing the behavior of the chosen algorithm (VTC or LENA)
+3. For each sample and observation, generating "measured" vocalization counts using a statistical model representing the
+   algorithm's behavior.
+4. Returning or saving the simulated detection results.
+
+## Statistical Model
+
+The simulation uses a hierarchical model where:
+
+- `lambda_ij` ~ Gamma(alpha_ij, mu_ij/alpha_ij) represents detection rates
+- Detected vocalizations are generated using one of two distribution options:
+    - Poisson distribution: Detected ~ Poisson(lambda_ij * true_ij)
+    - Gamma distribution: Detected ~ Int(Gamma(alpha, beta)) with mean lambda_ij * true_ij and standard deviation sqrt(
+      lambda_ij * true_ij / tau)
+
+Where:
+
+- lambda_ij is the detection rate from speaker i to detected speaker j
+- true_ij is the true vocalization count for speaker i
+- tau is a precision parameter used in the gamma distribution option
+
+The Poisson scheme slightly inflates the variance, and the gamma scheme attempts to capture the correct
+variance but may be a poor approximation for small counts.
+
 ## Installation
 
 ```bash
@@ -273,16 +303,6 @@ print(mean_detections)
 - `"average"`: Use mean hyperprior values (reduced variance)
 - `"unique"`: Same hyperpriors for all samples (minimal variance)
 
-## Use Cases
-
-The programmatic API is particularly useful for:
-
-- **Interactive analysis** in Jupyter notebooks
-- **Integration** into larger analysis pipelines
-- **Parameter sweeps** and sensitivity analyses
-- **Custom post-processing** of simulation results
-- **Reproducible research** with version-controlled parameters
-
 Example workflow:
 
 ```python
@@ -313,35 +333,6 @@ for key, result in results.items():
     correlation = result[['CHI', 'FEM']].corr().iloc[0, 1]
     print(f"{key}: CHI-FEM correlation = {correlation:.3f}")
 ```
-
-## How It Works
-
-The simulation works by:
-
-1. Loading synthetic ground truth data (the "true" vocalization counts per speaker and per observation/recording)
-2. Loading pre-computed hyperparameters characterizing the behavior of the chosen algorithm (VTC or LENA)
-3. For each sample and observation, generating "measured" vocalization counts using a statistical model representing the
-   algorithm's behavior.
-4. Returning or saving the simulated detection results.
-
-## Statistical Model
-
-The simulation uses a hierarchical model where:
-
-- `lambda_ij` ~ Gamma(alpha_ij, mu_ij/alpha_ij) represents detection rates
-- Detected vocalizations are generated using one of two distribution options:
-    - Poisson distribution: Detected ~ Poisson(lambda_ij * true_ij)
-    - Gamma distribution: Detected ~ Int(Gamma(alpha, beta)) with mean lambda_ij * true_ij and standard deviation sqrt(
-      lambda_ij * true_ij / tau)
-
-Where:
-
-- lambda_ij is the detection rate from speaker i to detected speaker j
-- true_ij is the true vocalization count for speaker i
-- tau is a precision parameter used in the gamma distribution option
-
-The Poisson scheme slightly inflates the variance, and the gamma scheme attempts to capture the correct
-variance but may be a poor approximation for small counts.
 
 ## Development
 
