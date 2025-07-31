@@ -12,7 +12,13 @@ dependencies = [
     "numpy",
     "scipy",
     "tqdm",
-    "importlib-resources"
+    "importlib-resources",
+]
+
+[project.optional-dependencies]
+truth = [
+    "cmdstanpy",
+    "ChildProject"
 ]
 
 [project.scripts]

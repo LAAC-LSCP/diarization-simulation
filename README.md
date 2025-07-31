@@ -134,7 +134,7 @@ The corpus must be compatible with the [ChildProject](https://github.com/LAAC-LS
 | `--corpus`     | Path to the input ChildProject corpus                                 | Required |
 | `--annotator`  | Annotation set containing the manual annotations                      | Required |
 | `--output`     | Location of the output file                                           | Required |
-| `--recordings` | Optional whitelist of specific recordings to process                  | None     |
+| `--recordings` | Path to a CSV dataframes containing the list of recordings            | None     |
 | `--samples`    | Number of samples to generate                                         | 1000     |
 | `--mode`       | Sample from the mode of the posterior distribution of hyperparameters | False    |
 

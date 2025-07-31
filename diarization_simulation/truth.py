@@ -1,15 +1,24 @@
 import numpy as np
 import pandas as pd
-from cmdstanpy import CmdStanModel
 from scipy.stats import gamma, poisson
-from ChildProject.projects import ChildProject
-from ChildProject.annotations import AnnotationManager
+
+try:
+    from cmdstanpy import CmdStanModel
+    from ChildProject.projects import ChildProject
+    from ChildProject.annotations import AnnotationManager
+except ImportError as e:
+    raise ImportError(
+        f"Truth analysis functionality requires additional dependencies. "
+        f"Install with: pip install cmdstanpy ChildProject\n"
+        f"Original error: {e}",
+    ) from e
+
 import tempfile
 import argparse
 
 
 def generate_ground_truth(
-        corpus: str, annotator: str, recordings: list = None,
+        corpus: str, annotator: str, recordings_path: list = None,
         n_samples: int = 1000, mode: bool = False,
 ):
     """
@@ -27,11 +36,17 @@ def generate_ground_truth(
     project = ChildProject(corpus)
     project.read()
 
-    if recordings is None:
+    if recordings_path is None:
         recordings = project.recordings
     else:
-        recordings = project.recordings[
-            project.recordings["recording_filename"].isin(recordings)]
+        recordings = pd.read_csv(recordings_path)
+        missing_columns = {
+                              "recording_filename", "duration",
+                          } - set(recordings.columns)
+        if missing_columns:
+            raise Exception(
+                f"The following columns are missing from {recordings_path}: {missing_columns}",
+            )
 
     recordings["duration"] /= 1000
 
@@ -195,8 +210,8 @@ def main():
         "--output", required=True, help="Location of the output file",
     )
     parser.add_argument(
-        "--recordings", nargs="+", default=None,
-        help="Optional whitelist of recordings",
+        "--recordings", default=None,
+        help="Path to list of recordings (CSV)",
     )
     parser.add_argument(
         "--samples", type=int, default=1000,

@@ -334,6 +334,7 @@ def simulate_diarization(
         verbose=verbose,
     )
 
+
 def main():
     """Command-line interface (maintains backward compatibility)."""
     parser = argparse.ArgumentParser(
