@@ -112,10 +112,15 @@ sample,observation,CHI,OCH,FEM,MAL
 ## Synthetic Ground Truth Generation
 
 The package includes a tool for generating synthetic ground truth data from real corpus annotations using the
-`truth-simulate` command-line tool. This is useful when you have sparse manual annotations describing the distribution of the quantity of speech in multiple recordings and want to generate realistic
+`truth-simulate` command-line tool. This is useful when you have sparse manual annotations describing the distribution
+of the quantity of speech in multiple recordings and want to generate realistic
 ground truth datasets.
 
 ### Command-line Interface for Ground Truth Generation
+
+We also provide a tool for generating synthetic datasets reproducing the characteristics of a real corpus.
+The corpus must be compatible with the [ChildProject](https://github.com/LAAC-LSCP/ChildProject) python package (which
+should also be installed).
 
 ```bash
 truth-simulate --corpus path/to/corpus \
@@ -125,9 +130,6 @@ truth-simulate --corpus path/to/corpus \
 ```
 
 #### Command-line Arguments for `truth-simulate`
-
-We also provide a tool for generating synthetic datasets reproducing the characteristics of a real corpus.
-The corpus must be compatible with the [ChildProject](https://github.com/LAAC-LSCP/ChildProject) python package (which should also be installed).
 
 | Argument       | Description                                                           | Default  |
 |----------------|-----------------------------------------------------------------------|----------|
