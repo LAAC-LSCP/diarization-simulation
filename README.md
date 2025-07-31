@@ -1,5 +1,35 @@
 # Diarization Simulation
 
+<!-- TOC -->
+* [Diarization Simulation](#diarization-simulation)
+  * [Overview](#overview)
+  * [How It Works](#how-it-works)
+  * [Statistical Model](#statistical-model)
+    * [Poisson Distribution Option](#poisson-distribution-option)
+    * [Gamma Distribution Option](#gamma-distribution-option)
+    * [Parameters](#parameters)
+    * [Model Characteristics](#model-characteristics)
+  * [Installation](#installation)
+  * [Usage](#usage)
+    * [Command-line Interface](#command-line-interface)
+      * [Command-line Arguments](#command-line-arguments)
+    * [Input Format](#input-format)
+    * [Output Format](#output-format)
+  * [Synthetic Ground Truth Generation](#synthetic-ground-truth-generation)
+    * [Command-line Interface for Ground Truth Generation](#command-line-interface-for-ground-truth-generation)
+      * [Command-line Arguments for `truth-simulate`](#command-line-arguments-for-truth-simulate)
+    * [How Ground Truth Generation Works](#how-ground-truth-generation-works)
+    * [Ground Truth Output Format](#ground-truth-output-format)
+    * [Typical Workflow](#typical-workflow)
+    * [Python API](#python-api)
+      * [Quick Start](#quick-start)
+      * [Working with DataFrames](#working-with-dataframes)
+      * [API Parameters](#api-parameters)
+  * [Development](#development)
+    * [Requirements](#requirements)
+  * [Citation](#citation)
+<!-- TOC -->
+
 A Python package for simulating speaker diarization with LENA
 and [VTC](https://github.com/MarvinLvn/voice-type-classifier) from ground truth vocalization data.
 
@@ -39,7 +69,7 @@ The simulation works by:
 
 The simulation uses a hierarchical model where:
 
-- Detection rates follow: $\lambda_{ij} \sim \mathrm{Gamma}(\alpha_{ij}, \mu_{ij}/\alpha_{ij})$
+- Detection/confusion rates $\lambda_{ij}$ follow: $\lambda_{ij} \sim \mathrm{Gamma}(\alpha_{ij}, \mu_{ij}/\alpha_{ij})$
 - Detected vocalizations are generated using one of two distribution options:
 
 ### Poisson Distribution Option
@@ -54,7 +84,7 @@ The simulation uses a hierarchical model where:
 \mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)\rfloor
 ```
 
-where the gamma distribution has:
+where the gamma distribution verifies:
 
 ```math
 \mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{ij} \text{ and } \sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{ij}}{\tau}}
