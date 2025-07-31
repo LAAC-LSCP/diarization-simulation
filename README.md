@@ -41,25 +41,27 @@ The simulation works by:
 
 The simulation uses a hierarchical model where:
 
-- Detection rates follow: $\lambda_{ij} \sim \text{Gamma}(\alpha_{ij}, \mu_{ij}/\alpha_{ij})$
+- Detection rates follow: $\lambda_{ij} \sim \mathrm{Gamma}(\alpha_{ij}, \mu_{ij}/\alpha_{ij})$
 - Detected vocalizations are generated using one of two distribution options:
 
 ### Poisson Distribution Option
-$$\text{Detected}_{ij} \sim \text{Poisson}(\lambda_{ij} \cdot \text{true}_{ij})$$
+
+$$\mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{ij})$$
 
 ### Gamma Distribution Option  
-$$\text{Detected}_{ij} \sim \lfloor\text{Gamma}(\alpha, \beta)\rfloor$$
+
+$$\mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)\rfloor$$
 
 where the gamma distribution has:
-- Mean: $\mathbb{E}[\text{Detected}_{ij}] = \lambda_{ij} \cdot \text{true}_{ij}$
-- Standard deviation: $\sigma[\text{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \text{true}_{ij}}{\tau}}$
+- Mean: $\mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{ij}$
+- Standard deviation: $\sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{ij}}{\tau}}$
 
 ### Parameters
 
 | Parameter | Description |
 |-----------|-------------|
 | $\lambda_{ij}$ | Detection rate from speaker $i$ to detected speaker $j$ |
-| $\text{true}_{ij}$ | True vocalization count for speaker $i$ |
+| $\mathrm{true}_{ij}$ | True vocalization count for speaker $i$ |
 | $\tau$ | Precision parameter used in the gamma distribution option |
 | $\alpha_{ij}, \mu_{ij}$ | Shape and scale parameters for the detection rate prior |
 | $\alpha, \beta$ | Shape and rate parameters for the gamma detection model |
