@@ -1,16 +1,15 @@
 # Diarization Simulation
 
 <!-- TOC -->
-* [Diarization Simulation](#diarization-simulation)
-  * [Overview](#overview)
-  * [How It Works](#how-it-works)
-  * [Statistical Model](#statistical-model)
-  * [Installation](#installation)
-  * [Usage](#usage)
-  * [Synthetic Ground Truth Generation](#synthetic-ground-truth-generation)
-  * [Typical Workflow](#typical-workflow)
-  * [Python API](#python-api-1)
-  * [Citation](#citation)
+* [Overview](#overview)
+* [How It Works](#how-it-works)
+* [Statistical Model](#statistical-model)
+* [Installation](#installation)
+* [Usage](#usage)
+* [Synthetic Ground Truth Generation](#synthetic-ground-truth-generation)
+* [Typical Workflow](#typical-workflow)
+* [Python API](#python-api-1)
+* [Citation](#citation)
 <!-- TOC -->
 
 A Python package for simulating speaker diarization with LENA
