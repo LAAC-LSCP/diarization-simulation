@@ -84,9 +84,8 @@ where the gamma distribution verifies:
 
 ### Model Characteristics
 
-- **Poisson scheme**: Slightly inflates the variance relative to the true underlying process
-- **Gamma scheme**: Attempts to capture the correct variance structure but may provide poor approximations for small
-  count values
+- **Poisson scheme**: overestimates certain sources of variance.
+- **Gamma scheme**: better captures the true variance but only approximate for small count data
 
 ## Installation
 
