@@ -87,7 +87,7 @@ where the gamma distribution verifies:
 The original model assumed a Generalized Poisson Distribution, given that the vocalization counts are underdispersed wrt the Poisson distribution.
 However, sampling from this distribution is a bit harder, and the simulation proposes two approximation schemes instead:
 
-- **Poisson scheme**: overestimates certain sources of variance.
+- **Poisson scheme**: neglects the underdispersion of the count data
 - **Gamma scheme**: better captures the true variance but only approximate for small count data
 
 ## Installation
