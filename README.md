@@ -1,6 +1,7 @@
 # Diarization Simulation
 
 <!-- TOC -->
+
 * [Overview](#overview)
 * [How It Works](#how-it-works)
 * [Statistical Model](#statistical-model)
@@ -10,6 +11,7 @@
 * [Typical Workflow](#typical-workflow)
 * [Python API](#python-api-1)
 * [Citation](#citation)
+
 <!-- TOC -->
 
 A Python package for simulating speaker diarization with LENA
@@ -54,19 +56,19 @@ The simulation uses a hierarchical model where:
 - Detection/confusion rates $\lambda_{ij}$ follow: $\lambda_{ij} \sim \mathrm{Gamma}(\alpha_{ij}, \mu_{ij}/\alpha_{ij})$
 - Detected vocalizations are generated using one of two distribution options:
 
-### Poisson Distribution Option
+- The Poisson distribution:
 
 ```math
 \mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{ij})
 ```
 
-### Gamma Distribution Option
+- The Gamma distribution:
 
 ```math
 \mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)\rfloor
 ```
 
-where the gamma distribution verifies:
+With $\alpha$ and $\beta$ being fixed such that:
 
 ```math
 \mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{ij} \text{ and } \sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{ij}}{\tau}}
@@ -84,7 +86,8 @@ where the gamma distribution verifies:
 
 ### Model Characteristics
 
-The original model assumed a Generalized Poisson Distribution, given that the vocalization counts are underdispersed wrt the Poisson distribution.
+The original model assumed a Generalized Poisson Distribution, given that the vocalization counts are underdispersed wrt
+the Poisson distribution.
 However, sampling from this distribution is a bit harder, and the simulation proposes two approximation schemes instead:
 
 - **Poisson scheme**: neglects the underdispersion of the count data
@@ -115,7 +118,6 @@ For the generation of synthetic ground-truth data, you will also need the follow
 
 - cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
 - ChildProject
-
 
 ## Usage
 
@@ -211,14 +213,15 @@ truth-simulate --corpus path/to/corpus \
 
 #### Command-line Arguments for `truth-simulate`
 
-| Argument       | Description                                                           | Default  |
-|----------------|-----------------------------------------------------------------------|----------|
-| `--corpus`     | Path to the input ChildProject corpus                                 | Required |
-| `--annotator`  | Annotation set containing the manual annotations                      | Required |
-| `--output`     | Location of the output file                                           | Required |
-| `--recordings` | Path to a CSV dataframes containing the list of recordings            | None     |
-| `--samples`    | Number of samples to generate                                         | 1000     |
-| `--mode`       | Sample from the mode of the posterior distribution of hyperparameters | False    |
+| Argument              | Description                                                                                   | Default  |
+|-----------------------|-----------------------------------------------------------------------------------------------|----------|
+| `--corpus`            | Path to the input ChildProject corpus                                                         | Required |
+| `--annotator`         | Annotation set containing the manual annotations                                              | Required |
+| `--output`            | Location of the output file                                                                   | Required |
+| `--recordings`        | Path to a CSV dataframes containing the list of recordings                                    | None     |
+| `--samples`           | Number of samples to generate                                                                 | 1000     |
+| `--mode`              | Sample from the mode of the posterior distribution of hyperparameters                         | False    |
+| `--show-distribution` | Show the marginal distribution of speech for each speaker according to the manual annotations | False    |
 
 ### How Ground Truth Generation Works
 
