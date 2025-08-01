@@ -20,6 +20,7 @@ import argparse
 def generate_ground_truth(
         corpus: str, annotator: str, recordings_path: list = None,
         n_samples: int = 1000, mode: bool = False,
+        show_distribution: bool = False,
 ):
     """
     :param corpus: path to the childproject corpus
@@ -150,10 +151,50 @@ def generate_ground_truth(
     variables = fit.stan_variables()
     sampler = fit.method_variables()
     posterior_mode = sampler["lp__"].argmax()
-
     samples = variables["samples"]
-    df = []
 
+    if show_distribution:
+        from matplotlib import pyplot as plt
+        PER_HOUR = 3600
+        y = np.zeros((C, 100, samples.shape[0]))
+        upper_bound = np.zeros((C, samples.shape[0]))
+
+        fig, ax = plt.subplots()
+        for c, speaker in enumerate(speakers):
+            for s in range(samples.shape[0]):
+                upper_bound[c, s] = gamma.ppf(
+                    q=0.99,
+                    a=variables["shape"][s, c],
+                    scale=variables["rate"][s, c] / variables["shape"][s, c],
+                ) * PER_HOUR
+
+        x_max = np.max(np.mean(upper_bound, axis=1))
+        ax.set_xlim(0, x_max)
+        x = np.linspace(0, x_max, y.shape[1])
+
+        for c, speaker in enumerate(speakers):
+            for s in range(samples.shape[0]):
+                y[c, :, s] = gamma.pdf(
+                    x=x / PER_HOUR,
+                    a=variables["shape"][s, c],
+                    scale=variables["rate"][s, c] / variables["shape"][
+                        s, c],
+                ) / PER_HOUR
+
+            ax.fill_between(
+                x, np.quantile(y[c], q=0.05 / 2, axis=1),
+                np.quantile(y[c], q=1 - 0.05 / 2, axis=1),
+                alpha=0.25,
+            )
+            ax.plot(x, np.mean(y[c], axis=1), label=speaker)
+
+        ax.set_xlabel("Vocalizations per hour")
+        ax.set_ylabel("Density")
+
+        plt.legend()
+        plt.show()
+
+    df = []
     if mode:
         for i in range(n_samples):
             for k in range(K):
@@ -222,12 +263,16 @@ def main():
         default=False,
         help="Sample from the mode of the posterior distribution of the hyperparameters.",
     )
+    parser.add_argument(
+        "--show-distribution", action="store_true",
+    )
 
     args = parser.parse_args()
 
     df = generate_ground_truth(
         args.corpus, args.annotator, args.recordings,
         n_samples=args.samples, mode=args.mode,
+        show_distribution=args.show_distribution,
     )
 
     df.to_csv(args.output)
