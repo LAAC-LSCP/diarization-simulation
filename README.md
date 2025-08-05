@@ -59,15 +59,19 @@ The simulation uses a hierarchical model where:
 - The Poisson distribution:
 
 ```math
-\mathrm{Detected}_{ij} &\sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{i})\\
-\mathrm{Detected}_{j} &= \sum_i \mathrm{Detected}_{ij}
+\mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{i})
+```
+```math
+\mathrm{Detected}_{j} = \sum_i \mathrm{Detected}_{ij}
 ```
 
 - The Gamma distribution:
 
 ```math
-\mathrm{Detected}_{ij} &\sim \lfloor\mathrm{Gamma}(\alpha, \beta)+0.5\rfloor\\
-\mathrm{Detected}_{j} &= \sum_i \mathrm{Detected}_{ij}
+\mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)+0.5\rfloor
+```
+```math
+\mathrm{Detected}_{j} = \sum_i \mathrm{Detected}_{ij}
 ```
 
 With $\alpha$ and $\beta$ being fixed such that:
