@@ -59,19 +59,21 @@ The simulation uses a hierarchical model where:
 - The Poisson distribution:
 
 ```math
-\mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{ij})
+\mathrm{Detected}_{ij} &\sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{i})\\
+\mathrm{Detected}_{j} &= \sum_i \mathrm{Detected}_{ij}
 ```
 
 - The Gamma distribution:
 
 ```math
-\mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)\rfloor
+\mathrm{Detected}_{ij} &\sim \lfloor\mathrm{Gamma}(\alpha, \beta)+0.5\rfloor\\
+\mathrm{Detected}_{j} &= \sum_i \mathrm{Detected}_{ij}
 ```
 
 With $\alpha$ and $\beta$ being fixed such that:
 
 ```math
-\mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{ij} \text{ and } \sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{ij}}{\tau}}
+\mathbb{E}[\mathrm{Detected}_{ij}] = \lambda_{ij} \cdot \mathrm{true}_{i} \text{ and } \sigma[\mathrm{Detected}_{ij}] = \sqrt{\frac{\lambda_{ij} \cdot \mathrm{true}_{i}}{\tau}}
 ```
 
 ### Parameters
@@ -79,7 +81,7 @@ With $\alpha$ and $\beta$ being fixed such that:
 | Parameter               | Description                                             |
 |-------------------------|---------------------------------------------------------|
 | $\lambda_{ij}$          | Detection rate from speaker $i$ to detected speaker $j$ |
-| $\mathrm{true}_{ij}$    | True vocalization count for speaker $i$                 |
+| $\mathrm{true}_{i}$     | True vocalization count for speaker $i$                 |
 | $\tau$                  | Underdispersion parameter                               |
 | $\alpha_{ij}, \mu_{ij}$ | Shape and scale parameters for the detection rate prior |
 | $\alpha, \beta$         | Shape and rate parameters for the gamma detection model |
