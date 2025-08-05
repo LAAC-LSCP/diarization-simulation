@@ -56,7 +56,7 @@ The simulation uses a hierarchical model where:
 - Detection/confusion rates $\lambda_{ij}$ follow: $\lambda_{ij} \sim \mathrm{Gamma}(\alpha_{ij}, \mu_{ij}/\alpha_{ij})$
 - Detected vocalizations are generated using one of two distribution options:
 
-- The Poisson distribution:
+1. The Poisson distribution:
 
 ```math
 \mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{i})
@@ -65,7 +65,7 @@ The simulation uses a hierarchical model where:
 \mathrm{Detected}_{j} = \sum_i \mathrm{Detected}_{ij}
 ```
 
-- The Gamma distribution:
+2. The Gamma distribution:
 
 ```math
 \mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)+0.5\rfloor
