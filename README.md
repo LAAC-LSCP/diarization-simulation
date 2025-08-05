@@ -61,6 +61,7 @@ The simulation uses a hierarchical model where:
 ```math
 \mathrm{Detected}_{ij} \sim \mathrm{Poisson}(\lambda_{ij} \cdot \mathrm{true}_{i})
 ```
+
 ```math
 \mathrm{Detected}_{j} = \sum_i \mathrm{Detected}_{ij}
 ```
@@ -70,6 +71,7 @@ The simulation uses a hierarchical model where:
 ```math
 \mathrm{Detected}_{ij} \sim \lfloor\mathrm{Gamma}(\alpha, \beta)+0.5\rfloor
 ```
+
 ```math
 \mathrm{Detected}_{j} = \sum_i \mathrm{Detected}_{ij}
 ```
@@ -199,16 +201,13 @@ sample,observation,CHI,OCH,FEM,MAL
 
 ## Synthetic Ground Truth Generation
 
-The package includes a tool for generating synthetic ground truth data from real corpus annotations using the
-`truth-simulate` command-line tool. This is useful when you have sparse manual annotations describing the distribution
-of the quantity of speech in multiple recordings and want to generate realistic
-ground truth datasets.
+The package includes a tool for generating synthetic ground truth data for a given corpus, using manual annotations to
+infer a realistic speech distribution.
+The target corpus must be compatible with the [ChildProject](https://github.com/LAAC-LSCP/ChildProject)
+python package (which
+should also be installed).
 
 ### Command-line Interface for Ground Truth Generation
-
-We also provide a tool for generating synthetic datasets reproducing the characteristics of a real corpus.
-The corpus must be compatible with the [ChildProject](https://github.com/LAAC-LSCP/ChildProject) python package (which
-should also be installed).
 
 ```bash
 truth-simulate --corpus path/to/corpus \
