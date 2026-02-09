@@ -16,8 +16,7 @@ The package and methods are described in Gautheron et al. (2025), *Classificatio
 4. [Complete worked example: R(CHI, FEM) — sensitivity and significance](#complete-worked-example-rchi-fem--sensitivity-and-significance)
 5. [Step-by-step reference](#step-by-step-reference)
 6. [Interpreting simulation results](#interpreting-simulation-results)
-7. [Tips and troubleshooting](#tips-and-troubleshooting)
-8. [References](#references)
+7. [References](#references)
 
 ---
 
@@ -446,17 +445,6 @@ results = simulate_diarization(
 - **Bias and variance:** Systematic difference from the true value is bias; spread across samples is variance. Both matter when judging sensitivity and when building null distributions.
 - **Algorithm comparison:** Run the same ground truth through both `vtc` and `lena` and compare bias and null distributions. Different algorithms can yield different biases and different variances (e.g. LENA often more variable in the manuscript).
 - **Next steps:** If bias is large or your observed statistic is not significant against the null, consider Bayesian calibration (manuscript) or reporting uncertainty; simulations **diagnose** sensitivity and test consistency with classification errors alone.
-
----
-
-## Tips and troubleshooting
-
-- **Reproducibility:** Always set `--seed` (CLI) or `random_seed` (Python) when you need repeatable results.
-- **Sample size:** Use at least a few hundred `--samples` for stable means and SDs of your statistics; 1000+ is safer for publication.
-- **Hyperpriors:** `hyperprior_mode="sample"` (default) reflects full algorithm uncertainty; `"average"` or `"unique"` reduces variance and run time.
-- **Column names:** Must be exactly `observation`, `CHI`, `OCH`, `FEM`, `MAL`; counts must be non-negative integers.
-- **Missing optional columns:** If you use a DataFrame without `observation`, the code uses the row index; for CSV, include an `observation` column.
-- **Large runs:** For many observations and many samples, simulation can be slow; start with smaller `n_samples` (e.g. 100–200) to test your pipeline, then increase.
 
 ---
 
