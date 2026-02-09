@@ -130,12 +130,13 @@ For the generation of synthetic ground-truth data, you will also need the follow
 
 ## Tutorial
 
-A step-by-step **tutorial** walks through using the package with a complete worked example: sensitivity of R(CHI, FEM) to confusion errors and testing whether an observed correlation is consistent with classification errors alone (null: true R = 0). It is available in two formats:
+A step-by-step **tutorial** walks through using the package with a complete worked example: sensitivity of R(CHI, FEM) to confusion errors and testing whether an observed correlation is consistent with classification errors alone (null: true R = 0). It is available in three formats:
 
 - **[tutorial.md](tutorial.md)** — Markdown (quick read, copy-paste commands and code)
 - **[tutorial.ipynb](tutorial.ipynb)** — Jupyter notebook (run interactively)
+- **[tutorial.Rmd](tutorial.Rmd)** — R Markdown (R + CLI: call `diarization-simulate` from R via `system2()`, analyze and plot in R)
 
-Both follow the same structure and are aligned with Gautheron et al. (2025). For a 5-minute quick start, see the “Quick start” section in the tutorial.
+All follow the same structure and are aligned with Gautheron et al. (2025). For a 5-minute quick start, see the “Quick start” section in the tutorial.
 
 ## Usage
 
