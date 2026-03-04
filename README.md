@@ -3,15 +3,20 @@
 <!-- TOC -->
 
 * [Overview](#overview)
-* [How It Works](#how-it-works)
-* [Statistical Model](#statistical-model)
-* [Installation](#installation)
 * [Tutorial](#tutorial)
+* [Installation](#installation)
+  * [Requirements](#requirements)
 * [Usage](#usage)
-* [Synthetic Ground Truth Generation](#synthetic-ground-truth-generation)
-* [Typical Workflow](#typical-workflow)
-* [Python API](#python-api-1)
+  * [Input Format](#input-format)
+  * [Command-line Interface](#command-line-interface)
+  * [Python API](#python-api)
+  * [Output Format](#output-format)
+  * [Generating Ground Truth from a ChildProject Corpus](#generating-ground-truth-from-a-childproject-corpus)
+* [Statistical Model](#statistical-model)
+  * [Parameters](#parameters)
+  * [Model Characteristics](#model-characteristics)
 * [Citation](#citation)
+
 
 <!-- TOC -->
 
@@ -21,8 +26,7 @@ and [VTC](https://github.com/MarvinLvn/voice-type-classifier) from ground truth 
 Diarization algorithms segment and classify speech into predefined speaker categories (including child (CHI) other
 child (OCH), female adult (FEM), male adult (MAL)).
 In Child Development and Language Acquisition research, these segments are aggregated into vocalization counts (see
-below) measuring children's
-speech output and their speech input in naturalistic daylong recordings.
+below) measuring children's speech output and their speech input in naturalistic daylong recordings.
 
 ![](docs/vocalization_counts.png)
 
@@ -34,21 +38,269 @@ consistent with spurious correlations due to classification errors.
 
 ## Overview
 
-Diarization Simulation is a tool designed to simulate the distortion of vocalization counts from different speakers by
-diarization
-algorithms. It takes synthetic ground truth data as its input (the true speaker vocalization counts) and simulates
-measured vocalization counts
-based on the detection and confusion rates of LENA and VTC. The confusion rates of these algorithms were measured on
-calibration data consisting of 30 hours of manual annotations.
+Diarization Simulation helps you assess how classification errors in automated diarization algorithms — LENA and VTC — affect downstream analyses of vocalization counts. You provide a ground truth dataset (true vocalization counts per speaker and per recording), and the tool simulates what those algorithms would *measure*, drawing on pre-computed detection and confusion rates calibrated against ~30 hours of manual annotations. Across many simulated samples, you can then ask: how sensitive is my finding to classification errors? Or: is an observed result consistent with errors alone?
 
-## How It Works
+Ground truth data can come from your own sources, or be generated synthetically. For users working with a [ChildProject](childproject.readthedocs.io) corpus, the package also includes an optional `truth-simulate` tool that infers realistic vocalization distributions from manual annotations and generates synthetic ground truth accordingly — see [Generating Ground Truth from a ChildProject Corpus](#generating-ground-truth-from-a-childproject-corpus).
 
-The simulation works by:
+Internally, the simulation loads your ground truth, applies algorithm-specific hyperparameters, and generates measured vocalization counts using a Poisson or Gamma approximation to account for underdispersion. See [Statistical Model](#statistical-model) for details.
 
-1. Loading synthetic ground truth data (the "true" vocalization counts per speaker and per observation/recording)
-2. Loading pre-computed hyperparameters characterizing the behavior of the chosen algorithm (VTC or LENA)
-3. For each sample and observation, generating "measured" vocalization counts using a statistical model representing the
-   algorithm's behavior.
+For a concrete end-to-end example, see the [Tutorial](#tutorial).
+
+## Tutorial
+
+A step-by-step tutorial walks through a complete worked example using this package. It is available in two formats:
+
+- **[tutorial.ipynb](tutorial.ipynb)** — Jupyter notebook using the Python API directly in an interactive mode
+- **[tutorial.Rmd](tutorial.Rmd)** — R Markdown calling `diarization-simulate` via the command-line interface (through `system2()`)
+
+Both follow the same structure and are aligned with Gautheron et al. (2025).
+
+To help readers grasp the idea behind our proposal, we pick as our specific example whether an observed correlation between child vocalizations (CHI) and female adult vocalizations (FEM) — written R(CHI, FEM) — could be an artifact of diarization errors rather than a genuine relationship. This is a reasonable concern: if an algorithm systematically confuses CHI and FEM speech, recordings with many child vocalizations may also appear to have many female adult vocalizations, even if no true relationship exists.
+
+The tutorial therefore poses the question: *is the observed correlation consistent with what we would expect under the null hypothesis that the true correlation is zero?* It does this by simulating what a diarization algorithm would measure if the ground truth had R(CHI, FEM) = 0, and checking whether the observed correlation falls within the range of simulated values.
+
+This kind of sensitivity analysis is the primary use case for the package, and the tutorial is the fastest way to see the full workflow — from synthetic ground truth generation through to simulation and interpretation — end to end. For a 5-minute version, see the "Quick start" section at the top of the tutorial.
+
+## Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/LAAC-LSCP/diarization-simulation.git
+cd diarization-simulation
+
+# Install the package
+pip install -e .
+```
+
+### Requirements
+
+You will need Python 3.8+ to run this package. Key dependencies include:
+
+- pandas
+- numpy
+- scipy
+- numba
+- tqdm
+
+If you followed the [Installation](#installation) instructions, you should have those packages already.
+
+For users working with a [ChildProject](childproject.readthedocs.io) corpus, the package also includes an optional `truth-simulate` tool which requires installation of the following packages, which are not installed by default:
+
+- cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
+- ChildProject (see installation instructions [here](https://childproject.readthedocs.io/en/latest/install.html)
+
+## Usage
+
+The package can be used via the command-line interface or the Python API.
+
+### Input Format
+
+Both the CLI and Python API require the same columns in the input CSV:
+
+- `observation`: Unique identifier for each recording/observation
+- `CHI`: Child vocalization count
+- `OCH`: Other child vocalization count
+- `FEM`: Female adult vocalization count
+- `MAL`: Male adult vocalization count
+
+Example:
+
+```csv
+observation,CHI,OCH,FEM,MAL
+1,120,30,200,50
+2,90,15,180,70
+3,150,25,220,45
+```
+
+### Command-line Interface
+
+The main command line interface can be accessed through `diarization-simulate`:
+
+
+```bash
+diarization-simulate --truth path/to/truth.csv \
+                    --output path/to/output.csv \
+                    --algo vtc \
+                    --samples 1000 \
+                    --distribution poisson
+```
+
+#### Command-line Arguments
+
+| Argument                | Description                                                 | Default   |
+|-------------------------|-------------------------------------------------------------|-----------|
+| `--truth`               | Path to the synthetic truth dataset (in csv format)         | Required  |
+| `--output`              | Location of the output file                                 | Required  |
+| `--output-format`       | Output file format (`csv`, `parquet`, or `npz`)             | `csv`     |
+| `--algo`                | Algorithm to simulate (`vtc` or `lena`)                     | Required  |
+| `--samples`             | Number of samples per observation                           | 1000      |
+| `--average-hyperpriors` | Use the mean value of the hyperpriors (mu and alpha)        | False     |
+| `--unique-hyperpriors`  | Use fixed hyperpriors (mu and alpha) throughout all samples | False     |
+| `--distribution`        | Distribution for vocalization counts (`poisson` or `gamma`) | `poisson` |
+| `--seed`                | Random seed for reproducibility                             | None      |
+
+### Python API
+
+```python
+import pandas as pd
+from diarization_simulation import simulate_diarization
+
+# Load your ground truth data
+truth_data = pd.read_csv("truth.csv")
+
+# Simulate detections
+results = simulate_diarization(
+    truth_data=truth_data,
+    algorithm="vtc",
+    distribution="poisson",
+    n_samples=1000,
+    random_seed=42
+)
+
+# Analyze results
+mean_detections = results.groupby('observation')[['CHI', 'OCH', 'FEM', 'MAL']].mean()
+print("Mean detections per observation:")
+print(mean_detections)
+```
+
+To compare results across algorithms and distribution types:
+
+```python
+# Run simulations with different parameters
+algorithms = ["vtc", "lena"]
+distributions = ["poisson", "gamma"]
+results = {}
+
+for algo in algorithms:
+    for dist in distributions:
+        key = f"{algo}_{dist}"
+        results[key] = simulate_diarization(
+            truth_data=truth_data,
+            algorithm=algo,
+            distribution=dist,
+            n_samples=1000,
+            random_seed=42
+        )
+
+# Compare R(CHI, FEM) across configurations
+for key, result in results.items():
+    correlation = result[['CHI', 'FEM']].corr().iloc[0, 1]
+    print(f"{key}: CHI-FEM correlation = {correlation:.3f}")
+```
+
+#### Python API Arguments
+
+| Parameter         | Type             | Description                                               | Default     |
+|-------------------|------------------|-----------------------------------------------------------|-------------|
+| `truth_data`      | str or DataFrame | Path to CSV file or pandas DataFrame with truth data      | Required    |
+| `algorithm`       | str              | Algorithm to simulate (`"vtc"` or `"lena"`)               | `"vtc"`     |
+| `distribution`    | str              | Distribution type (`"poisson"` or `"gamma"`)              | `"poisson"` |
+| `n_samples`       | int              | Number of samples to generate per observation             | 1000        |
+| `hyperprior_mode` | str              | Hyperprior handling (`"sample"`, `"average"`, `"unique"`) | `"sample"`  |
+| `random_seed`     | int or None      | Random seed for reproducibility                           | None        |
+| `verbose`         | bool             | Show progress bar                                         | True        |
+
+**Hyperprior modes:**
+
+- `"sample"`: Each sample gets its own hyperpriors (captures algorithm uncertainty)
+- `"average"`: Use mean hyperprior values (reduced variance)
+- `"unique"`: Same hyperpriors for all samples (minimal variance)
+
+### Output Format
+
+Both the CLI and Python API return the same structure:
+
+- `sample`: Sample number (0 to `n_samples-1`)
+- `observation`: Original observation identifier
+- `CHI`, `OCH`, `FEM`, `MAL`: Simulated vocalization counts per speaker
+
+Example:
+
+```csv
+sample,observation,CHI,OCH,FEM,MAL
+0,1,118,28,195,52
+0,2,87,16,175,73
+1,1,122,31,198,49
+1,2,92,14,182,68
+```
+
+### Generating Ground Truth from a ChildProject Corpus
+
+If you have a [ChildProject](https://github.com/LAAC-LSCP/ChildProject) corpus with manual annotations, the package includes an optional `truth-simulate` tool that can generate synthetic ground truth by fitting a Bayesian hierarchical model to your annotation data, to infer a realistic speech distribution. This requires installing the optional dependencies listed in [Requirements](#requirements).
+
+#### Command-line Interface for Ground Truth Generation
+
+```bash
+truth-simulate --corpus path/to/corpus \
+               --annotator annotation_set_name \
+               --output ground_truth.csv \
+               --samples 1000
+```
+
+#### Command-line Arguments for `truth-simulate`
+
+| Argument              | Description                                                                                   | Default  |
+|-----------------------|-----------------------------------------------------------------------------------------------|----------|
+| `--corpus`            | Path to the input ChildProject corpus                                                         | Required |
+| `--annotator`         | Annotation set containing the manual annotations                                              | Required |
+| `--output`            | Location of the output file                                                                   | Required |
+| `--recordings`        | Path to a CSV file containing the list of recordings to include                               | None     |
+| `--samples`           | Number of samples to generate                                                                 | 1000     |
+| `--mode`              | Sample from the mode of the posterior distribution of hyperparameters                         | False    |
+| `--show-distribution` | Show the marginal distribution of speech for each speaker according to the manual annotations | False    |
+
+The output CSV contains synthetic ground truth with columns `recording_filename`, `observation`, `CHI`, `OCH`, `FEM`, and `MAL`, with K×N rows where K is the number of recordings and N the number of samples requested.
+
+#### How Ground Truth Generation Works
+
+The `truth-simulate` tool uses a Bayesian hierarchical model to infer vocalization rate distributions from sparse manual
+annotations and then generates complete ground truth datasets. The process works as follows:
+
+1. **Load corpus data**: Reads a ChildProject corpus containing recordings and manual annotations
+2. **Extract annotation statistics**: Counts vocalizations per speaker type (CHI, OCH, FEM, MAL) in manually annotated
+   segments
+3. **Fit hierarchical model**: Uses Stan to fit a Gamma-Poisson model that estimates vocalization rates per speaker
+   across the corpus
+4. **Generate samples**: Produces synthetic ground truth vocalization counts for all recordings in the corpus
+
+When using `truth-simulate`, the output CSV contains synthetic ground truth data with the same `CHI, OCH, FEM, MAL` columns as in [Output Format](#output-format), an additional `recording_filename` which contains the original recording filename, and `observation` being a unique identifier combining recording filename and sample number (e.g., "recording_001.wav,0").
+
+Example output:
+
+```csv
+recording_filename,observation,CHI,OCH,FEM,MAL
+recording_001.wav,"recording_001.wav,0",145,23,198,67
+recording_002.wav,"recording_002.wav,0",112,18,176,45
+recording_001.wav,"recording_001.wav,1",138,25,203,72
+recording_002.wav,"recording_002.wav,1",119,16,181,49
+...
+```
+
+As above, the output contains KxN rows where K is the number of recordings and N the number of samples requested.
+
+#### Addapted Workflow 
+
+When generating ground truth data using `truth-simulate`, a complete simulation workflow will:
+
+1. **Generate ground truth** from your corpus annotations:
+
+```bash
+truth-simulate --corpus /path/to/corpus \
+               --annotator human_annotations \
+               --output ground_truth.csv \
+               --samples 100
+```
+
+2. **Simulate diarization** on the generated ground truth:
+
+```bash
+diarization-simulate --truth ground_truth.csv \
+                    --output simulated_detections.csv \
+                    --algo vtc \
+                    --samples 100
+```
+
+In this example, the output `simulated_detections.csv` will contain 100x100xK rows, where K is the number of recordings in the dataset.
 
 ## Statistical Model
 
@@ -101,308 +353,6 @@ However, sampling from this distribution is a bit harder, and the simulation pro
 
 - **Poisson scheme**: neglects the underdispersion of the count data
 - **Gamma scheme**: better captures the true variance but only approximate for small count data
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/LAAC-LSCP/diarization-simulation.git
-cd diarization-simulation
-
-# Install the package
-pip install -e .
-```
-
-### Requirements
-
-You will need Python 3.8+ to run this package. Key dependencies include:
-
-- pandas
-- numpy
-- scipy
-- numba
-- tqdm
-
-If you followed the [Installation](#installation) instructions, you should have those packages already.
-
-For the generation of synthetic ground-truth data, you will also need the following packages, which are not installed by default:
-
-- cmdstanpy (see installation instructions [here](https://mc-stan.org/cmdstanpy/installation.html))
-- ChildProject (see installation instructions [here](https://childproject.readthedocs.io/en/latest/install.html)
-
-## Tutorial
-
-A step-by-step **tutorial** walks through using the package with a complete worked example: sensitivity of R(CHI, FEM) to confusion errors and testing whether an observed correlation is consistent with classification errors alone (null: true R = 0). It is available in two formats:
-
-- **[tutorial.ipynb](tutorial.ipynb)** — Jupyter notebook (run interactively)
-- **[tutorial.Rmd](tutorial.Rmd)** — R Markdown (calls `diarization-simulate` from R via `system2()`)
-
-All follow the same structure and are aligned with Gautheron et al. (2025). For a 5-minute quick start, see the “Quick start” section in the tutorial.
-
-## Usage
-
-The package can be used both programmatically (in Python scripts, notebooks, etc.) and via command-line interface.
-
-### Command-line Interface
-
-The main command line interfaced can be accessed through `diarization-simulate`:
-
-```bash
-diarization-simulate --truth path/to/truth.csv \
-                    --output path/to/output.csv \
-                    --algo vtc \
-                    --samples 1000 \
-                    --distribution poisson
-```
-
-#### Command-line Arguments
-
-| Argument                | Description                                                 | Default   |
-|-------------------------|-------------------------------------------------------------|-----------|
-| `--truth`               | Path to the synthetic truth dataset (in csv format)         | Required  |
-| `--output`              | Location of the output file                                 | Required  |
-| `--output-format`       | Output file format (`csv`, `parquet`, or `npz`)             | `csv`     |
-| `--algo`                | Algorithm to simulate (`vtc` or `lena`)                     | Required  |
-| `--samples`             | Number of samples per observation                           | 1000      |
-| `--average-hyperpriors` | Use the mean value of the hyperpriors (mu and alpha)        | False     |
-| `--unique-hyperpriors`  | Use fixed hyperpriors (mu and alpha) throughout all samples | False     |
-| `--distribution`        | Distribution for vocalization counts (`poisson` or `gamma`) | `poisson` |
-| `--seed`                | Random seed for reproducibility                             | None      |
-
-### Input Format
-
-The input CSV must contain the following columns:
-
-- `observation`: Unique identifier for each recording/observation
-- `CHI`: Child vocalization count
-- `OCH`: Other child vocalization count
-- `FEM`: Female adult vocalization count
-- `MAL`: Male adult vocalization count
-
-Example:
-
-```csv
-observation,CHI,OCH,FEM,MAL
-1,120,30,200,50
-2,90,15,180,70
-3,150,25,220,45
-```
-
-### Output Format
-
-The output will contain the following columns:
-
-- `sample`: Sample number (0 to `n_samples-1`)
-- `observation`: Original observation identifier
-- `CHI`: Simulated child vocalization detection
-- `OCH`: Simulated other child vocalization detection
-- `FEM`: Simulated female adult vocalization detection
-- `MAL`: Simulated male adult vocalization detection
-
-Example output:
-
-```csv
-sample,observation,CHI,OCH,FEM,MAL
-0,1,118,28,195,52
-0,2,87,16,175,73
-0,3,145,23,215,48
-1,1,122,31,198,49
-1,2,92,14,182,68
-...
-```
-
-## Synthetic Ground Truth Generation
-
-The package includes a tool for generating synthetic ground truth data for a given corpus, using manual annotations to
-infer a realistic speech distribution.
-The target corpus must be compatible with the [ChildProject](https://github.com/LAAC-LSCP/ChildProject)
-python package (which
-should also be installed).
-
-### Command-line Interface for Ground Truth Generation
-
-```bash
-truth-simulate --corpus path/to/corpus \
-               --annotator annotation_set_name \
-               --output path/to/ground_truth.csv \
-               --samples 1000
-```
-
-#### Command-line Arguments for `truth-simulate`
-
-| Argument              | Description                                                                                   | Default  |
-|-----------------------|-----------------------------------------------------------------------------------------------|----------|
-| `--corpus`            | Path to the input ChildProject corpus                                                         | Required |
-| `--annotator`         | Annotation set containing the manual annotations                                              | Required |
-| `--output`            | Location of the output file                                                                   | Required |
-| `--recordings`        | Path to a CSV dataframes containing the list of recordings                                    | None     |
-| `--samples`           | Number of samples to generate                                                                 | 1000     |
-| `--mode`              | Sample from the mode of the posterior distribution of hyperparameters                         | False    |
-| `--show-distribution` | Show the marginal distribution of speech for each speaker according to the manual annotations | False    |
-
-### How Ground Truth Generation Works
-
-The `truth-simulate` tool uses a Bayesian hierarchical model to infer vocalization rate distributions from sparse manual
-annotations and then generates complete ground truth datasets. The process works as follows:
-
-1. **Load corpus data**: Reads a ChildProject corpus containing recordings and manual annotations
-2. **Extract annotation statistics**: Counts vocalizations per speaker type (CHI, OCH, FEM, MAL) in manually annotated
-   segments
-3. **Fit hierarchical model**: Uses Stan to fit a Gamma-Poisson model that estimates vocalization rates per speaker
-   across the corpus
-4. **Generate samples**: Produces synthetic ground truth vocalization counts for all recordings in the corpus
-
-### Ground Truth Output Format
-
-The output CSV contains synthetic ground truth data with the following columns:
-
-- `recording_filename`: Original recording filename
-- `observation`: Unique identifier combining recording filename and sample number (e.g., "recording_001.wav,0")
-- `CHI`: Simulated child vocalization count
-- `OCH`: Simulated other child vocalization count
-- `FEM`: Simulated female adult vocalization count
-- `MAL`: Simulated male adult vocalization count
-
-Example output:
-
-```csv
-recording_filename,observation,CHI,OCH,FEM,MAL
-recording_001.wav,"recording_001.wav,0",145,23,198,67
-recording_002.wav,"recording_002.wav,0",112,18,176,45
-recording_001.wav,"recording_001.wav,1",138,25,203,72
-recording_002.wav,"recording_002.wav,1",119,16,181,49
-...
-```
-
-The output contains KxN rows where K is the number of recordings and N the number of samples requested.
-
-## Typical Workflow
-
-A complete simulation workflow typically involves two steps:
-
-1. **Generate ground truth** from your corpus annotations:
-
-```bash
-truth-simulate --corpus /path/to/corpus \
-               --annotator human_annotations \
-               --output ground_truth.csv \
-               --samples 100
-```
-
-2. **Simulate diarization** on the generated ground truth:
-
-```bash
-diarization-simulate --truth ground_truth.csv \
-                    --output simulated_detections.csv \
-                    --algo vtc \
-                    --samples 100
-```
-
-The output `simulated_detections.csv` will contain 100x100xK rows, where K is the number of recordings in the dataset.
-
-### Python API
-
-#### Quick Start
-
-```python
-import pandas as pd
-from diarization_simulation import simulate_diarization
-
-# Create or load your truth data
-truth_df = pd.DataFrame(
-    {
-        'observation': [1, 2, 3],
-        'CHI': [120, 90, 150],
-        'OCH': [30, 15, 25],
-        'FEM': [200, 180, 220],
-        'MAL': [50, 70, 45]
-    }
-)
-
-# Simulate detections
-results = simulate_diarization(
-    truth_data=truth_df,
-    algorithm="vtc",
-    distribution="poisson",
-    n_samples=1000,
-    random_seed=42
-)
-
-print(f"Generated {len(results)} detection samples")
-print(results.head())
-```
-
-#### Working with DataFrames
-
-```python
-# Load your data
-truth_data = pd.read_csv("my_truth_data.csv")
-
-# Quick simulation for analysis
-results = simulate_diarization(
-    truth_data=truth_data,
-    algorithm="vtc",
-    n_samples=100,
-    hyperprior_mode="unique",  # Same hyperpriors for all samples
-    verbose=False  # Disable progress bar
-)
-
-# Analyze results
-mean_detections = results.groupby('observation')[['CHI', 'OCH', 'FEM', 'MAL']].mean()
-print("Mean detections per observation:")
-print(mean_detections)
-```
-
-## Python API
-
-**`simulate_diarization()` function parameters:**
-
-| Parameter         | Type             | Description                                               | Default     |
-|-------------------|------------------|-----------------------------------------------------------|-------------|
-| `truth_data`      | str or DataFrame | Path to CSV file or pandas DataFrame with truth data      | Required    |
-| `algorithm`       | str              | Algorithm to simulate (`"vtc"` or `"lena"`)               | `"vtc"`     |
-| `distribution`    | str              | Distribution type (`"poisson"` or `"gamma"`)              | `"poisson"` |
-| `n_samples`       | int              | Number of samples to generate per observation             | 1000        |
-| `hyperprior_mode` | str              | Hyperprior handling (`"sample"`, `"average"`, `"unique"`) | `"sample"`  |
-| `random_seed`     | int or None      | Random seed for reproducibility                           | None        |
-| `verbose`         | bool             | Show progress bar                                         | True        |
-
-**Hyperprior modes:**
-
-- `"sample"`: Each sample gets its own hyperpriors (captures algorithm uncertainty)
-- `"average"`: Use mean hyperprior values (reduced variance)
-- `"unique"`: Same hyperpriors for all samples (minimal variance)
-
-Example workflow:
-
-```python
-import pandas as pd
-from diarization_simulation import simulate_diarization
-
-# Load your ground truth data
-truth_data = pd.read_csv("ground_truth.csv")
-
-# Run simulations with different parameters
-algorithms = ["vtc", "lena"]
-distributions = ["poisson", "gamma"]
-results = {}
-
-for algo in algorithms:
-    for dist in distributions:
-        key = f"{algo}_{dist}"
-        results[key] = simulate_diarization(
-            truth_data=truth_data,
-            algorithm=algo,
-            distribution=dist,
-            n_samples=1000,
-            random_seed=42  # For reproducibility
-        )
-
-# Compare results
-for key, result in results.items():
-    correlation = result[['CHI', 'FEM']].corr().iloc[0, 1]
-    print(f"{key}: CHI-FEM correlation = {correlation:.3f}")
-```
 
 ## Citation
 
