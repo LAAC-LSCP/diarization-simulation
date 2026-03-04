@@ -10,13 +10,17 @@ output:
 
 # Tutorial: Using the Diarization Simulation Package (R + CLI)
 
-This tutorial provides a **documented example of use** of the diarization-simulation package **from R**, calling the package’s **command-line interface (CLI)**. It covers the same workflow as the [Python/Markdown tutorial](tutorial.md): (1) sensitivity of R(CHI, FEM) to confusion errors, and (2) testing whether an observed R is consistent with classification errors alone (null: true R = 0).
+This tutorial provides a documented example of use of the diarization-simulation package from R, calling the package's command-line interface via `system2()`. For background on the package, the statistical model, and installation instructions, see the README. For the equivalent Python workflow using the API directly, see tutorial.ipynb.
 
-The package and methods are described in Gautheron et al. (2025), *Classification errors distort findings in automated speech processing: examples and solutions from child-development research*.
+The worked example follows Gautheron et al. (2025) and addresses a concrete question: could an observed correlation between child vocalizations (CHI) and female adult vocalizations (FEM) be an artifact of diarization errors alone? The example has two parts — assessing sensitivity of R(CHI, FEM) to confusion errors, and testing whether an observed R is consistent with the null hypothesis that the true correlation is zero.
 
-**Prerequisites:** The diarization-simulation package must be installed and on your PATH (e.g. `pip install -e .` from the project root). You will run `diarization-simulate` from R via `system2()`. R packages used: **MASS** (multivariate normal), and base R for reading CSVs, correlations, and plotting.
+**Prerequisites**: The diarization-simulation package must be installed and on your PATH (see README). R packages used: **MASS** (multivariate normal) and base R. Code chunks that call the CLI are set to `eval = FALSE` so the document knits even if the simulator is not on your PATH; run those chunks interactively in RStudio (or set `eval = TRUE`) once the CLI is available.
 
-Some code chunks that call the CLI are set to `eval = FALSE` so the document knits even if the simulator is not on your PATH; run those chunks interactively in RStudio (or set `eval = TRUE`) once the CLI is available.
+
+## How to use this document
+
+This tutorial is written as an R Markdown file, intended to be opened and run in RStudio, because we believe most of our readers will be more familiar with it than with a terminal. If you are not familiar with RStudio or R Markdown, Software Carpentry has beginner-friendly introductions to [RStudio](https://swcarpentry.github.io/r-novice-gapminder/01-rstudio-intro.html), including to [R Markdown](https://swcarpentry.github.io/r-novice-gapminder/14-knitr-markdown.html). In a nutshell, R Markdown is a format that integrates written text and executable code; code sections are delimited by ```{r chunk-name} and ```. As you read through this tutorial, run each code chunk as you go by clicking the green play button in the top-right corner of the chunk — the output will appear either directly below the chunk or in a different pane in Rstudio (the console or "Plots" section).
+Some chunks call the diarization-simulation package through the command line via `system2()`, because diarization-simulation is a Python package, not an R package. If you would prefer to use the command line directly instead, Software Carpentry has an introduction [here](https://swcarpentry.github.io/shell-novice/). Regardless of your approach, make sure the package is installed before running any chunks — see the README for instructions.
 
 ---
 
@@ -33,9 +37,11 @@ Some code chunks that call the CLI are set to `eval = FALSE` so the document kni
 
 ## Quick start (5 minutes)
 
-From the project root (after `pip install -e .`), run the following in R to create a small ground truth file, run the simulator via the CLI, and inspect the output.
+This section walks through the core workflow in three steps: creating a small example dataset, running the simulator on it, and inspecting the results. 
 
-```{r quick-start, eval=FALSE}
+The chunk below creates a ground truth table with three recordings and saves it as a CSV file — you won't see any output yet, but after running it you should find a file called truth.csv in your working directory.
+
+```{r quick-start}
 # 1. Create a small ground truth CSV
 truth <- data.frame(
   observation = 1:3,
@@ -46,6 +52,11 @@ truth <- data.frame(
 )
 write.csv(truth, "truth.csv", row.names = FALSE)
 
+```
+
+This next chunk passes the created truth.csv file to the simulator, which will run and print some progress information in the RStudio console. It may take a few seconds.
+
+```{r run-sims}
 # 2. Run the simulator (CLI); adjust path to diarization-simulate if needed
 system2("diarization-simulate", c(
   "--truth", "truth.csv",
@@ -56,53 +67,45 @@ system2("diarization-simulate", c(
   "--seed", "42"
 ))
 
+```
+
+Finally, the next chunk loads the simulator's output and prints the size of the output table, the first few rows, and the mean simulated counts per observation. The dimensions, in this example, will be 300: Each recording appears once per sample, so with 100 samples you should see 300 rows in total. Next, you can inspect the printed rows to get an idea of what the output file columns look like, but also the fact that the same 3 observations are repeated across samples, each time with slightly different simulated counts. This is what the simulator does, reflect the variability in observed counts due to algorithm variability and confusion.
+
+```{r}
 # 3. Load and inspect in R
 sim <- read.csv("simulated.csv")
+dim(sim)
+
+
 head(sim, 20)
+
 # Mean simulated counts per observation
 aggregate(cbind(CHI, OCH, FEM, MAL) ~ observation, data = sim, FUN = mean)
 ```
 
-Each `observation` appears 100 times (one per `sample`), with different simulated counts reflecting algorithm variability and confusion.
 
----
-
-## Why use this package?
-
-Automated diarization algorithms (LENA, VTC) segment and label speech into speaker types (CHI, OCH, FEM, MAL). Their errors propagate into vocalization counts and can **bias** downstream statistics. **Simulations** let you: (1) start from synthetic or real “true” counts, (2) simulate what the algorithm would *measure*, and (3) compare results to the known truth. See the [main tutorial](tutorial.md) and the manuscript for more detail.
-
----
-
-## Installation and prerequisites
-
-- **Python 3.8+** and the diarization-simulation package (see project README).
-- From the project root: `pip install -e .` so that `diarization-simulate` is on your PATH.
-- In R: install **MASS** if needed (`install.packages("MASS")`).
-
-Verify the CLI from a shell:
-
-```bash
-diarization-simulate --help
-```
-
----
 
 ## Complete worked example: R(CHI, FEM) — sensitivity and significance
 
-We use the **correlation between child and female-adult vocalization counts**, R(CHI, FEM). The example has two parts:
+This section illustrates two distinct ways to use the package, both centered on the same quantity: the correlation between child and female-adult vocalization counts, R(CHI, FEM). Although the two use cases use our simulation package, they answer different questions and would typically arise at different stages of an analysis.
 
-1. **Step 1 — Sensitivity:** How much does the *measured* R(CHI, FEM) differ from the *true* R when we simulate algorithm output?
-2. **Step 2 — Significance test:** Given an observed R (e.g. 0.39), could it be due to classification errors alone (true R = 0)? We simulate under the null and compute a p-value.
+The first use case is **sensitivity analysis**: given a _known true correlation_, how much does the algorithm distort the measured R(CHI, FEM)? This is useful when you want to understand how much your results could be affected by classification errors prior to looking at your own data. To do this, we construct a synthetic ground truth dataset where the true correlation between CHI and FEM is fixed at a known level and free of any noise — this is the "real truth". We then simulate what the algorithm would measure, and observe how its errors warp the vocalization counts, shifting the measured correlation away from the true one.
 
----
 
-### Step 1: Examine the sensitivity of R(CHI, FEM) to confusion errors
+The second use case is **significance testing**: given an _observed R(CHI, FEM) from your own data_, could it have arisen from classification errors alone, even if the true underlying correlation is zero? This is useful when you have already obtained a result and want to assess whether it reflects a genuine relationship or is a plausible artifact of the algorithm. To do this, we construct a synthetic ground truth dataset where the true correlation is fixed at zero — again, free of any noise — and simulate what the algorithm would measure across many samples. This gives us a null distribution of measured correlations that we would expect to see if no true relationship existed. We then check whether the observed R(CHI, FEM) falls within or outside that distribution.
 
-We generate ground truth with a **known true correlation** (0 and ~0.3), simulate VTC via the CLI, then compute the **measured** R(CHI, FEM) in R and compare to the true R.
+
+
+### Use case 1: Examine the sensitivity of R(CHI, FEM) to confusion errors
+
+In this section we create two synthetic ground truth datasets — one where CHI and FEM are uncorrelated (true R = 0), and one where they have a moderate positive correlation (true R ≈ 0.3) — run the VTC simulator on each, and compare the measured R(CHI, FEM) to the known true value. This lets us see directly how much the algorithm inflates or distorts the correlation.
+
 
 #### 1.1 Generate ground truth from a multivariate log-normal (in R)
 
-We draw vocalization counts from a **multivariate log-normal** plus Poisson: log(counts) ~ MVN(μ, Σ), then counts = Poisson(exp(Z)). Parameters match the Python tutorial so results are comparable.
+The chunk below generates the two ground truth datasets and saves them as CSV files. Vocalization counts are drawn from a multivariate log-normal distribution: we first sample log-counts from a multivariate normal (which lets us control the correlation structure), then exponentiate and pass through a Poisson to get integer counts. This is a standard way to generate realistic, non-negative count data with a known correlation structure. The parameters are chosen to reflect typical vocalization counts in daylong recordings, and match those used in the Python tutorial so results are comparable across the two formats.
+
+After running this chunk, you should see the true R(CHI, FEM) for each dataset printed in the console. Note that the correlation on the count scale will be lower than the value specified in the log-normal model (0.35), because the exponentiation and Poisson sampling both attenuate correlations — so expect to see something closer to 0.15 than 0.3 for the correlated dataset, and something close to 0 for the uncorrelated one. This is expected behaviour. You will also find two new CSV files in your working directory: example_truth_r0.csv and example_truth_r03.csv.
 
 ```{r make-ground-truth}
 library(MASS)
@@ -146,23 +149,15 @@ write.csv(truth_r0,  "example_truth_r0.csv",  row.names = FALSE)
 write.csv(truth_r03, "example_truth_r03.csv", row.names = FALSE)
 ```
 
-Helper to compute R(CHI, FEM) per sample (used below):
 
-```{r measured-r-helper}
-measured_r_per_sample <- function(sim_df) {
-  samples <- unique(sim_df$sample)
-  vapply(samples, function(s) {
-    sub <- sim_df[sim_df$sample == s, ]
-    cor(sub$CHI, sub$FEM)
-  }, numeric(1))
-}
-```
 
-#### 1.2 Run the simulator via CLI and compute measured R per sample
+#### 1.2 Run the simulator and compute measured correlation per sample
 
-Call `diarization-simulate` twice (once per ground truth), then in R compute the Pearson correlation between CHI and FEM for each sample.
+This chunk does three things: it runs the simulator twice (once for each ground truth dataset), loads the results, and computes the Pearson correlation between CHI and FEM separately for each of the 500 simulated samples. This may take a moment to run — you should see some progress output in the console while the simulator is working.
 
-```{r simulate-and-r-per-sample, eval=FALSE}
+Once it completes, you will have four new objects in your R environment: sim_r0 and sim_r03 (the raw simulated counts), and R_measured_r0 and R_measured_r03 (a vector of 500 correlations, one per sample, for each dataset).
+
+```{r simulate-and-r-per-sample}
 # Simulate under true R = 0 (500 samples)
 system2("diarization-simulate", c(
   "--truth", "example_truth_r0.csv",
@@ -186,13 +181,26 @@ system2("diarization-simulate", c(
 # Load and compute R(CHI, FEM) per sample (measured_r_per_sample defined above)
 sim_r0  <- read.csv("sim_r0.csv")
 sim_r03 <- read.csv("sim_r03.csv")
+
+# Helper function to compute R(CHI, FEM) per sample
+measured_r_per_sample <- function(sim_df) {
+  samples <- unique(sim_df$sample)
+  vapply(samples, function(s) {
+    sub <- sim_df[sim_df$sample == s, ]
+    cor(sub$CHI, sub$FEM)
+  }, numeric(1))
+}
+
 R_measured_r0  <- measured_r_per_sample(sim_r0)
 R_measured_r03 <- measured_r_per_sample(sim_r03)
 ```
 
-For the rest of the tutorial we assume these objects exist. If you did not run the CLI, you can load pre-generated CSVs or run the chunks above.
 
-#### 1.3 Compare measured R to true R (sensitivity)
+#### 1.3 Compare measured correlation to true correlation (sensitivity)
+
+This chunk prints the mean and standard deviation of the measured R(CHI, FEM) across the 500 samples, for each dataset. You should expect to see that even when the true correlation is zero, the mean measured R is noticeably positive — this is the spurious correlation introduced by algorithm confusion errors. For the correlated dataset, the mean measured R will differ from the true count-scale correlation we observed in section 1.1, reflecting how the algorithm inflates it further.
+
+The standard deviation across samples tells you how much variability there is in the measured R from one simulated run to the next — a useful indicator of how stable the bias is.
 
 ```{r sensitivity-print}
 if (file.exists("sim_r0.csv") && file.exists("sim_r03.csv")) {
@@ -207,21 +215,23 @@ if (file.exists("sim_r0.csv") && file.exists("sim_r03.csv")) {
   cat("When TRUE R(CHI,FEM) ≈ 0.3:\n")
   cat("  Mean measured R:", mean(R_measured_r03), "\n")
   cat("  Std measured R: ", sd(R_measured_r03), "\n")
-  cat("  (Bias: measured R vs true 0.3)\n")
+  cat("  (Measured R given true count-scale R ≈ 0.15, and underlying R ≈ .3)\n")
 } else {
-  cat("Run the 'simulate-and-r-per-sample' chunk (with eval=TRUE) after installing the CLI to see sensitivity output.\n")
+  cat("Run the 'simulate-and-r-per-sample' chunk first!\n")
 }
 ```
 
-**Interpretation:** Even when the true correlation is **zero**, the measured R is typically **positive** (spurious correlation). When the true R is 0.3, the measured R is often **inflated**. So R(CHI, FEM) is **sensitive** to confusion errors.
+**Interpretation:** Even when the true correlation is zero, the measured R is on average around 0.31 — a substantial spurious correlation introduced by confusion errors alone. Strikingly, the measured R is almost identical when the true correlation is ~0.15, suggesting that the algorithm's errors dominate the signal to the point where the measured R tells us very little about the true underlying relationship. This is a strong illustration of why R(CHI, FEM) is sensitive to confusion errors: the measured value is heavily shaped by the algorithm's behaviour regardless of the ground truth. 
 
 ---
 
-### Step 2: Test whether an observed R is consistent with classification errors alone
+### Use case 2: Test whether an observed R is consistent with classification errors alone
 
-**Scenario:** You have 64 recordings, ran VTC, and observe **R_observed = 0.39**. Could this arise only from classification errors (true R = 0)? We simulate under the null and compute a p-value.
+**Scenario:** You have 64 recordings, ran VTC, and observe R(CHI, FEM) = 0.39. Given what we learned in Use case 1 — that confusion errors alone produce a mean measured R of around 0.31 — this observed value may not be as striking as it first appears. The question is whether it falls within the range of what we would expect to see under the null hypothesis that the true correlation is zero, or whether it is extreme enough to suggest a genuine relationship.
 
-#### 2.1 Assume corpus size and observed R
+#### 2.1 Set corpus size and observed R
+
+This chunk simply stores the two values we will use throughout this section. You can also adjust R_observed to match your own data if you are applying this to a real analysis.
 
 ```{r observed-r}
 n_obs_corpus <- 64
@@ -230,7 +240,9 @@ R_observed <- 0.39
 
 #### 2.2 Generate null ground truth (true R = 0) and run simulator
 
-```{r null-truth-and-sim, eval=FALSE}
+This chunk does two things in sequence: it first generates a new synthetic ground truth dataset with true R = 0 (using the same make_ground_truth() function from section 1.1, but with a different random seed), saves it as example_truth_null.csv, and then immediately passes it to the simulator. We use 2000 samples here — more than in Use case 1 — to get a stable null distribution. This will take longer to run than the previous simulation chunks. When it completes, R_null will be a vector of 2000 measured correlations representing what the algorithm would produce by chance alone.
+
+```{r null-truth-and-sim}
 truth_null <- make_ground_truth(n_obs_corpus, mean_log, std_log, corr_r0, seed = 123)
 write.csv(truth_null, "example_truth_null.csv", row.names = FALSE)
 
@@ -249,6 +261,8 @@ R_null <- measured_r_per_sample(sim_null)
 
 #### 2.3 Compare R_observed to the null distribution and compute p-value
 
+This chunk computes how often the null distribution produces a measured R as extreme as the observed value. The p-value is simply the proportion of null samples where the measured R meets or exceeds R_observed. Given that the null distribution is already centred around ~0.31, you should expect the p-value to be relatively large — meaning R_observed = 0.39 may well be consistent with confusion errors alone. A small p-value would suggest the observed R is genuinely difficult to explain by errors alone.
+
 ```{r pvalue}
 if (file.exists("sim_null.csv")) {
   sim_null <- read.csv("sim_null.csv")
@@ -264,9 +278,9 @@ if (file.exists("sim_null.csv")) {
 }
 ```
 
-**Interpretation:** A **small** p-value suggests the observed R is not easily explained by classification errors alone. A **large** p-value means the observed R is consistent with the null (spurious correlation from algorithm errors).
+**Interpretation:** A **small** p-value (below your chosen significance threshold, e.g. .05)) suggests the observed R is not easily explained by classification errors alone. 
 
-#### 2.4 Optional: plot null distribution and R_observed
+#### 2.4 Plot null distribution and R_observed
 
 ```{r null-plot}
 if (file.exists("sim_null.csv")) {
@@ -291,38 +305,12 @@ if (file.exists("sim_null.csv")) {
 
 You can save the plot with `pdf("example_null_R_chi_fem.pdf")` … `dev.off()` or use `ggplot2` if preferred.
 
----
 
-### Summary of the two steps
 
-| Step | Goal | What you do |
-|------|------|-------------|
-| **1. Sensitivity** | See how much R(CHI, FEM) is distorted by confusion | Generate ground truth with known true R (0 and ~0.3), run CLI simulator, compute measured R per sample in R; compare mean(measured R) to true R. |
-| **2. Significance** | Test if an observed R could be due to errors alone | Take corpus size and R_observed; generate null truth (true R=0), run CLI, get null distribution of measured R in R; p-value = proportion of null R ≥ R_observed (or two-tailed). |
-
----
-
-## Step-by-step reference
-
-### Ground truth format
-
-CSV with columns: `observation`, `CHI`, `OCH`, `FEM`, `MAL` (non-negative integer counts). Create in R, export from a spreadsheet, or use `truth-simulate` from a ChildProject corpus (see README).
-
-### Running the simulation (CLI from R)
-
-Use `system2("diarization-simulate", c("--truth", path_to_truth, "--output", path_to_output, "--algo", "vtc", "--samples", "1000", "--distribution", "poisson", "--seed", "42"))`. All arguments from the [main tutorial](tutorial.md) apply; run `diarization-simulate --help` for the full list.
-
-### Using simulated data in R
-
-1. `read.csv("output.csv")` to load the simulated data.
-2. For each `sample`, run the same analysis you would on real algorithm output (e.g. `cor(CHI, FEM)` or a regression).
-3. Aggregate across samples and compare to the true values (sensitivity) or to the null distribution (significance).
-
----
 
 ## References
 
 - **Package:** [LAAC-LSCP/diarization-simulation](https://github.com/LAAC-LSCP/diarization-simulation)
 - **Manuscript:** Gautheron, L., Kidd, E., Malko, A., Lavechin, M., & Cristia, A. (2025). *Classification errors distort findings in automated speech processing: examples and solutions from child-development research.* [DOI: 10.31234/osf.io/u925y](http://dx.doi.org/10.31234/osf.io/u925y)
 
-For installation, ground-truth generation from a ChildProject corpus, and the statistical model, see the project **README.md** and the [main tutorial](tutorial.md).
+For installation, ground-truth generation from a ChildProject corpus, and the statistical model, see the project **README.md**.
